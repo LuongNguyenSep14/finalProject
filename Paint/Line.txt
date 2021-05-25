@@ -1,0 +1,113 @@
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+        //HANDLE_WM_LBUTTONDOWN
+        //WM_LBUTTONUP
+        //WM_MOUSEMOVE
+        HANDLE_MSG(hWnd, WM_CREATE, OnCreate);
+        HANDLE_MSG(hWnd, WM_COMMAND, OnCommand);
+        HANDLE_MSG(hWnd, WM_DESTROY, OnDestroy);
+        HANDLE_MSG(hWnd, WM_PAINT, OnPaint);
+        HANDLE_MSG(hWnd, WM_LBUTTONDOWN, OnLButtonDown);
+        HANDLE_MSG(hWnd, WM_LBUTTONUP, OnLButtonUp);
+        HANDLE_MSG(hWnd, WM_MOUSEMOVE, OnMouseMove);
+
+    default:
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    return 0;
+}
+
+// Message handler for about box.
+INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    UNREFERENCED_PARAMETER(lParam);
+    switch (message)
+    {
+    case WM_INITDIALOG:
+        return (INT_PTR)TRUE;
+
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+        {
+            EndDialog(hDlg, LOWORD(wParam));
+            return (INT_PTR)TRUE;
+        }
+        break;
+    }
+    return (INT_PTR)FALSE;
+}
+
+BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
+{
+    // Lấy font hệ thống
+    LOGFONT lf;
+    GetObject(GetStockObject(DEFAULT_GUI_FONT), sizeof(LOGFONT), &lf);
+    HFONT hFont = CreateFont(lf.lfHeight, lf.lfWidth,
+        lf.lfEscapement, lf.lfOrientation, lf.lfWeight,
+        lf.lfItalic, lf.lfUnderline, lf.lfStrikeOut, lf.lfCharSet,
+        lf.lfOutPrecision, lf.lfClipPrecision, lf.lfQuality,
+        lf.lfPitchAndFamily, lf.lfFaceName);
+
+    return TRUE;
+}
+
+void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
+{
+
+}
+
+void OnDestroy(HWND hwnd)
+{
+    PostQuitMessage(0);
+}
+
+//starting point
+void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
+{
+    isPreview = true;
+    fromX = x;
+    fromY = y;
+    HDC hdc = GetDC(hwnd);
+    MoveToEx(hdc, x, y, NULL);
+}
+
+//release mouse
+void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
+{
+    isPreview = false;
+    // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
+    InvalidateRect(hwnd, NULL, TRUE);
+}
+
+//preview
+void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
+{
+    if (isPreview) 
+    {
+        toX = x;
+        toY = y;
+
+        // Báo hiệu cần xóa đi toàn bộ màn hình
+        InvalidateRect(hwnd, NULL, TRUE);
+    }
+}
+
+void OnPaint(HWND hwnd)
+{
+
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+
+    // Tạo pen với nét gạch chấm, độ dày là 3, màu đỏ
+    HPEN hPen = CreatePen(PS_DASHDOT, 3, RGB(255, 0, 0));
+    SelectObject(hdc, hPen);
+    MoveToEx(hdc, fromX, fromY, NULL);
+    LineTo(hdc, toX, toY);
+
+    EndPaint(hwnd, &ps);
+}
+
+
+
