@@ -16,6 +16,18 @@
 
 #define MAX_LOADSTRING 100
 
+CHOOSECOLOR  cc; // Thông tin màu chọn
+COLORREF  acrCustClr[16]; // Mảng custom color
+DWORD  rgbCurrent = RGB(255, 0, 0); // Red
+HBRUSH  hbrush; // Tạo ra brush từ màu đã chọn
+
+CHOOSEFONT  cf;
+LOGFONT  lf;
+HFONT  hfNew, hfOld, hfont;
+HGDIOBJ hfontPrev;
+COLORREF rgbPrev;
+HDC hdc;
+
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
@@ -251,7 +263,38 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 
 void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
+    switch (id)
+    {
+    case ID_CHOOSE_COLOR:
+        ZeroMemory(&cc, sizeof(CHOOSECOLOR));
+        cc.lStructSize = sizeof(CHOOSECOLOR);
+        cc.hwndOwner = hwnd;
+        cc.lpCustColors = (LPDWORD)acrCustClr;
+        cc.rgbResult = rgbCurrent;
+        cc.Flags = CC_FULLOPEN | CC_RGBINIT;
+        if (ChooseColor(&cc))
+        {
+            hbrush = CreateSolidBrush(cc.rgbResult);
+            rgbCurrent = cc.rgbResult;
+        }
+        break;
 
+    case ID_CHOOSE_FONT:
+        ZeroMemory(&cf, sizeof(CHOOSEFONT));
+        cf.lStructSize = sizeof(CHOOSEFONT);
+        cf.hwndOwner = hwnd;
+        cf.lpLogFont = &lf;
+        cf.Flags = CF_SCREENFONTS | CF_EFFECTS;
+
+        if (ChooseFont(&cf) == TRUE)
+        {
+            hfont = CreateFontIndirect(cf.lpLogFont);
+            hfontPrev = SelectObject(hdc, hfont);
+            rgbCurrent = cf.rgbColors;
+            rgbPrev = SetTextColor(hdc, rgbCurrent);
+        }
+        break;
+    }
 }
 
 void OnDestroy(HWND hwnd)
@@ -295,6 +338,9 @@ void OnPaint(HWND hwnd)
 
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
+
+    HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
+    SelectObject(hdc, hPen);
 
     //Rectangle(hdc, 100, 200, 300, 300);
 
