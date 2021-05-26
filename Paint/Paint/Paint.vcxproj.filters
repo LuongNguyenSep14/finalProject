@@ -39,13 +39,16 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="small.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="Paint.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="C:\Users\USER\Downloads\download.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Picture.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="rec\shape.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="paint.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

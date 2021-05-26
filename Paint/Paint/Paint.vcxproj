@@ -152,8 +152,9 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="C:\Users\USER\Downloads\download.bmp" />
-    <Image Include="Paint.ico" />
-    <Image Include="small.ico" />
+    <Image Include="paint.ico" />
+    <Image Include="Picture.ico" />
+    <Image Include="rec\shape.bmp" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="App.manifest" />
