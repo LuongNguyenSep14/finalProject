@@ -8,6 +8,8 @@
 #include <commctrl.h>
 #pragma comment(lib, "Comctl32.lib")
 #include <commdlg.h>
+#include "Utility.h"
+#include <fstream>
 
 #define IMAGE_WIDTH     18
 #define IMAGE_HEIGHT    18
@@ -54,6 +56,9 @@ int fromY = 0;
 int toX = 0;
 int toY = 0;
 bool isPreview = false;
+
+int id_button = ID_DRAW_RECTANGLE;
+shared_ptr<Object> obj = nullptr;
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -166,8 +171,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         //HANDLE_WM_LBUTTONDOWN
         //WM_LBUTTONUP
         //WM_MOUSEMOVE
+        //Rect *myRect = new Rect();
+
+
+
+        obj = ObjectFactory::instance()->create(id_button); //rect
+
         HANDLE_MSG(hWnd, WM_CREATE, OnCreate);
         HANDLE_MSG(hWnd, WM_COMMAND, OnCommand);
+
+       
         HANDLE_MSG(hWnd, WM_DESTROY, OnDestroy);
         HANDLE_MSG(hWnd, WM_PAINT, OnPaint);
         HANDLE_MSG(hWnd, WM_LBUTTONDOWN, OnLButtonDown);
@@ -175,6 +188,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hWnd, WM_MOUSEMOVE, OnMouseMove);
 
     default:
+        obj = ObjectFactory::instance()->create(ID_DRAW_RECTANGLE);
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
@@ -254,6 +268,7 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     userButtons[2].iBitmap += idx;
     userButtons[3].iBitmap += idx;
     userButtons[4].iBitmap += idx;
+    //how to define the button ?
     // Thêm nút bấm vào toolbar
     SendMessage(hToolBarWnd, TB_ADDBUTTONS, (WPARAM)sizeof(userButtons) / sizeof(TBBUTTON),
         (LPARAM)(LPTBBUTTON)&userButtons);
@@ -294,7 +309,28 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             rgbPrev = SetTextColor(hdc, rgbCurrent);
         }
         break;
+
+    case ID_DRAW_ELLIPSE:
+
+        id_button = ID_DRAW_ELLIPSE;
+        
+        break;
+    case ID_DRAW_LINE:
+
+        id_button = ID_DRAW_LINE;
+        break;
+    case ID_DRAW_RECTANGLE:
+        id_button = ID_DRAW_RECTANGLE;
+        break;
+
+    case ID_EDIT_DELETE:
+        //quick debug
+        //Rect
+        InvalidateRect(hwnd, NULL, FALSE );
+        break;
     }
+    
+    
 }
 
 void OnDestroy(HWND hwnd)
@@ -310,6 +346,7 @@ void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
     fromY = y;
     HDC hdc = GetDC(hwnd);
     MoveToEx(hdc, x, y, NULL);
+
 }
 
 //release mouse
@@ -318,6 +355,7 @@ void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
     isPreview = false;
     // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
     InvalidateRect(hwnd, NULL, TRUE);
+   // obj->OnLButtonUp(hwnd, x, y, keyFlags);
 }
 
 //preview
@@ -331,10 +369,15 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
         // Báo hiệu cần xóa đi toàn bộ màn hình
         InvalidateRect(hwnd, NULL, TRUE);
     }
+    //obj->OnMouseMove(hwnd, x, y, keyFlags);
 }
 
 void OnPaint(HWND hwnd)
 {
+    //obj->setFromX(fromX);
+    //obj->setFromY(fromY);
+    //obj->setToX(toX);
+    //obj->setToY(toY);
 
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
@@ -342,11 +385,23 @@ void OnPaint(HWND hwnd)
     HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
     SelectObject(hdc, hPen);
 
-    //Rectangle(hdc, 100, 200, 300, 300);
 
-    Rectangle(hdc, fromX, fromY, toX, toY);
+    if (id_button == ID_DRAW_RECTANGLE)
+        Rectangle(hdc, fromX, fromY, toX, toY);
+    else if (id_button == ID_DRAW_ELLIPSE)
+        Ellipse(hdc, fromX, fromY, toX, toY);
+    else if (id_button == ID_DRAW_LINE)
+    {
+        MoveToEx(hdc, fromX, fromY, NULL);
+        LineTo(hdc, toX, toY);
+    }
 
-    //Ellipse(hdc, fromX, fromY, toX, toY);
+
 
     EndPaint(hwnd, &ps);
+    //obj->OnPaint(hwnd);
 }
+
+
+
+
