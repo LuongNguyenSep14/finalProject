@@ -310,10 +310,14 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         }
         break;
 
+    case ID_FILE_NEW:
+        MessageBox(0, 0, 0, 0); // Quick debug
+        break;
+
     case ID_DRAW_ELLIPSE:
 
         id_button = ID_DRAW_ELLIPSE;
-        
+
         break;
     case ID_DRAW_LINE:
 
@@ -326,11 +330,11 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     case ID_EDIT_DELETE:
         //quick debug
         //Rect
-        InvalidateRect(hwnd, NULL, FALSE );
+        InvalidateRect(hwnd, NULL, TRUE);
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
         break;
     }
-    
-    
 }
 
 void OnDestroy(HWND hwnd)
