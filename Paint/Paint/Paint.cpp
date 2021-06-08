@@ -1,64 +1,17 @@
-﻿// Paint.cpp : Defines the entry point for the application.
+﻿
 //
-
-#include "framework.h"
 #include "Paint.h"
-#include <Windows.h>
-#include <windowsx.h>
-#include <commctrl.h>
-#pragma comment(lib, "Comctl32.lib")
-#include <commdlg.h>
-#include "Utility.h"
-#include <fstream>
 
-#define IMAGE_WIDTH     18
-#define IMAGE_HEIGHT    18
-#define BUTTON_WIDTH    0
-#define BUTTON_HEIGHT   0
 
-#define MAX_LOADSTRING 100
-
-CHOOSECOLOR  cc; // Thông tin màu chọn
-COLORREF  acrCustClr[16]; // Mảng custom color
-DWORD  rgbCurrent = RGB(255, 0, 0); // Red
-HBRUSH  hbrush; // Tạo ra brush từ màu đã chọn
-
-CHOOSEFONT  cf;
-LOGFONT  lf;
-HFONT  hfNew, hfOld, hfont;
-HGDIOBJ hfontPrev;
-COLORREF rgbPrev;
-HDC hdc;
-
-// Global Variables:
-HINSTANCE hInst;                                // current instance
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-
-// Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-
-//From windowsx.h
-BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct);
-void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify);
-void OnDestroy(HWND hwnd);
-void OnPaint(HWND hwnd);
-void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags);
-void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags);
-void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags);
-
-//variable
 int fromX = 0;
 int fromY = 0;
 int toX = 0;
 int toY = 0;
 bool isPreview = false;
+PAINTSTRUCT ps;
 
 int id_button = ID_DRAW_RECTANGLE;
-shared_ptr<Object> obj = nullptr;
+
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -126,16 +79,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
+
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
@@ -154,33 +98,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE: Processes messages for the main window.
-//
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
-//
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
-        //HANDLE_WM_LBUTTONDOWN
-        //WM_LBUTTONUP
-        //WM_MOUSEMOVE
-        //Rect *myRect = new Rect();
-
-
-
-        obj = ObjectFactory::instance()->create(id_button); //rect
-
+       
         HANDLE_MSG(hWnd, WM_CREATE, OnCreate);
         HANDLE_MSG(hWnd, WM_COMMAND, OnCommand);
-
-       
         HANDLE_MSG(hWnd, WM_DESTROY, OnDestroy);
         HANDLE_MSG(hWnd, WM_PAINT, OnPaint);
         HANDLE_MSG(hWnd, WM_LBUTTONDOWN, OnLButtonDown);
@@ -188,7 +113,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hWnd, WM_MOUSEMOVE, OnMouseMove);
 
     default:
-        obj = ObjectFactory::instance()->create(ID_DRAW_RECTANGLE);
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
@@ -366,35 +290,26 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
         toX = x;
         toY = y;
 
-        // Báo hiệu cần xóa đi toàn bộ màn hình
         InvalidateRect(hwnd, NULL, TRUE);
     }
-    //obj->OnMouseMove(hwnd, x, y, keyFlags);
+
 }
 
 void OnPaint(HWND hwnd)
 {
-    //obj->setFromX(fromX);
-    //obj->setFromY(fromY);
-    //obj->setToX(toX);
-    //obj->setToY(toY);
 
-    PAINTSTRUCT ps;
+    shared_ptr<Object> obj = Factory::instance()->create(id_button);
+
     HDC hdc = BeginPaint(hwnd, &ps);
 
     HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
     SelectObject(hdc, hPen);
 
 
-    if (id_button == ID_DRAW_RECTANGLE)
-        Rectangle(hdc, fromX, fromY, toX, toY);
-    else if (id_button == ID_DRAW_ELLIPSE)
-        Ellipse(hdc, fromX, fromY, toX, toY);
-    else if (id_button == ID_DRAW_LINE)
-    {
-        MoveToEx(hdc, fromX, fromY, NULL);
-        LineTo(hdc, toX, toY);
-    }
+    obj->setColor(rgbCurrent);
+    obj->setFrom(Point(fromX, fromY));
+    obj->setTo(Point(toX, toY));
+    obj->draw(hdc);
 
 
 
