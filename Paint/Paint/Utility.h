@@ -11,294 +11,150 @@
 
 using namespace std;
 
-class Object
+enum TYPE {L = 1, R = 2, E = 3};
+
+
+
+class Point
 {
-protected:
-	int fromX;
-	int fromY;
-	int toX;
-	int toY;
-    bool isPreview;
 public:
-    Object()
-    {
-        fromX = 0;
-        fromY = 0;
-        toX = 0;
-        toY = 0;
-        isPreview = false;
-    }
+	int x;
+	int y;
 
-    virtual void setToX(int toX)
-    {
-        this->toX = toX;
-    }
+	Point(int x, int y)
+	{
+		this->x = x;
+		this->y = y;
+	}
 
-    virtual void setToY(int toY)
-    {
-        this->toY = toY;
-    }
+	Point()
+	{
+		x = 0;
+		y = 0;
+	}
 
-    virtual void setFromX(int fromX)
-    {
-        this->fromX = fromX;
-    }
-    virtual void setFromY(int fromY)
-    {
-        this->fromY = fromY;
-    }
-
-    virtual void setPreview(bool preview)
-    {
-        this->isPreview = preview;
-    }
-
-	virtual void OnPaint(HWND hwnd) = 0;
-	virtual void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags) = 0;
-	virtual void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags) = 0;
-	virtual void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags) = 0;
-    virtual int getID() = 0;
-    virtual shared_ptr<Object> nextObject() = 0;
 
 };
 
+class Object
+{
+protected:
+	int ID;
+	Point from, to;
+	DWORD color;
+
+public:
+	Object()
+	{
+		ID = 0;
+		color = RGB(0, 0, 0);
+	}
+
+	Point getFrom()
+	{
+		return from;
+	}
+
+	Point getTo()
+	{
+		return to;
+	}
+
+	int getID()
+	{
+		return ID;
+	}
+
+	DWORD getcolor()
+	{
+		return color;
+	}
+
+	void setColor(DWORD color)
+	{
+		this->color = color;
+	}
+
+	virtual void setFrom(Point from)
+	{
+		this->from = from;
+	}
+
+	virtual void setTo(Point to)
+	{
+		this->to = to;
+	}
+
+	virtual void draw(HDC& hdc) = 0;
+	virtual shared_ptr<Object> nextObject() = 0;
+
+};
 
 class Line : public Object
 {
-private:
-    int id_button;
 public:
-    Line() : Object() 
-    {
-        id_button = ID_DRAW_LINE;
-    }
-    //starting point
-    void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
-    {
-        isPreview = true;
-        fromX = x;
-        fromY = y;
-        HDC hdc = GetDC(hwnd);
-        MoveToEx(hdc, x, y, NULL);
-    }
+	Line() : Object()
+	{
+		ID = ID_DRAW_LINE;
 
-    //release mouse
-    void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
-    {
-        isPreview = false;
-        // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
-        InvalidateRect(hwnd, NULL, TRUE);
-    }
+	}
 
-    //preview
-    void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
-    {
-        if (isPreview)
-        {
-            toX = x;
-            toY = y;
+	virtual void draw(HDC& hdc)
+	{
+		HPEN hPen = CreatePen(PS_DASHDOT, 3, this->color);
+		SelectObject(hdc, hPen);
+		
+		MoveToEx(hdc, getFrom().x, getFrom().y, NULL);
+		LineTo(hdc, getTo().x, getTo().y);
+	}
 
-            // Báo hiệu cần xóa đi toàn bộ màn hình
-            InvalidateRect(hwnd, NULL, TRUE);
-        }
-    }
+	virtual shared_ptr<Object> nextObject()
+	{
+		shared_ptr<Object> result = make_shared<Line>();
 
-    void OnPaint(HWND hwnd)
-    {
-
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-
-        // Tạo pen với nét gạch chấm, độ dày là 3, màu đỏ
-        HPEN hPen = CreatePen(PS_DASHDOT, 3, RGB(255, 0, 0));
-        SelectObject(hdc, hPen);
-        MoveToEx(hdc, fromX, fromY, NULL);
-        LineTo(hdc, toX, toY);
-
-        EndPaint(hwnd, &ps);
-    }
-
-    int getID()
-    {
-        return id_button;
-    }
-
-    shared_ptr<Object> nextObject()
-    {
-        shared_ptr<Object> result = make_shared<Line>();
-
-        return result;
-    }
+		return result;
+	}
 };
 
 class Rect : public Object
 {
-private:
-    int id_button;
 public:
-    Rect() : Object() 
-    {
-        id_button = ID_DRAW_RECTANGLE;
-    }
-    void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
-    {
-        isPreview = true;
-        fromX = x;
-        fromY = y;
-        HDC hdc = GetDC(hwnd);
-        MoveToEx(hdc, x, y, NULL);
-    }
+	Rect() : Object()
+	{
+		ID = ID_DRAW_RECTANGLE;
+	}
 
-    //release mouse
-    void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
-    {
-        isPreview = false;
-        // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
-        InvalidateRect(hwnd, NULL, TRUE);
-    }
+	virtual void draw(HDC& hdc)
+	{
+		Rectangle(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
+	}
 
-    //preview
-    void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
-    {
-        if (isPreview)
-        {
-            toX = x;
-            toY = y;
+	virtual shared_ptr<Object> nextObject()
+	{
+		shared_ptr<Object> result = make_shared<Rect>();
 
-            // Báo hiệu cần xóa đi toàn bộ màn hình
-            InvalidateRect(hwnd, NULL, TRUE);
-        }
-    }
-
-    void OnPaint(HWND hwnd)
-    {
-
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-
-        Rectangle(hdc, fromX, fromY, toX, toY);
-
-        //Ellipse(hdc, fromX, fromY, toX, toY);
-
-        EndPaint(hwnd, &ps);
-    }
-
-    int getID()
-    {
-        return id_button;
-    }
-
-    shared_ptr<Object> nextObject()
-    {
-        shared_ptr<Object> result = make_shared<Rect>();
-
-        return result;
-    }
+		return result;
+	}
 };
 
 class Ellipses : public Object
 {
-private:
-    int id_button;
 public:
-    Ellipses() : Object() 
-    { 
-        id_button = ID_DRAW_ELLIPSE;
-    }
+	Ellipses() : Object()
+	{
+		ID = ID_DRAW_ELLIPSE;
+	}
 
-    void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
-    {
-        isPreview = true;
-        fromX = x;
-        fromY = y;
-        HDC hdc = GetDC(hwnd);
-        MoveToEx(hdc, x, y, NULL);
-    }
+	virtual void draw(HDC& hdc)
+	{
+		Ellipse(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
+	}
 
-    //release mouse
-    void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
-    {
-        isPreview = false;
-        // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
-        InvalidateRect(hwnd, NULL, TRUE);
-    }
+	virtual shared_ptr<Object> nextObject()
+	{
+		shared_ptr<Object> result = make_shared<Ellipses>();
 
-    //preview
-    void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
-    {
-        if (isPreview)
-        {
-            toX = x;
-            toY = y;
-
-            // Báo hiệu cần xóa đi toàn bộ màn hình
-            InvalidateRect(hwnd, NULL, TRUE);
-        }
-    }
-
-    void OnPaint(HWND hwnd)
-    {
-
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-
-        Ellipse(hdc, fromX, fromY, toX, toY);
-
-        EndPaint(hwnd, &ps);
-    }
-
-    int getID()
-    {
-        return id_button;
-    }
-
-    shared_ptr<Object> nextObject()
-    {
-        shared_ptr<Object> result = make_shared<Ellipses>();
-
-        return result;
-    }
-
+		return result;
+	}
 };
 
-class ObjectFactory
-{
-private:
-    static ObjectFactory* _instance;
-    vector<shared_ptr<Object>> _prototype;
-
-    ObjectFactory()
-    {
-        _prototype.push_back(make_shared<Rect>());
-        _prototype.push_back(make_shared<Line>());
-        _prototype.push_back(make_shared<Ellipses>());
-    }
-public:
-
-    static ObjectFactory* instance()
-    {
-        if (_instance == nullptr)
-            _instance = new ObjectFactory();
-        return _instance;
-    }
-
-    int size()
-    {
-        return _prototype.size();
-    }
-
-    shared_ptr<Object> create(int id_button)
-    {
-        for (int i = 0; i < _prototype.size(); i++)
-        {
-            if (_prototype[i]->getID() == id_button)
-            {
-                shared_ptr<Object> result = _prototype[i]->nextObject();
-                return result;
-            }
-        }
-        return nullptr;
-
-    }
-};
-ObjectFactory* ObjectFactory::_instance = nullptr;
