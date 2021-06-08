@@ -405,7 +405,3 @@ void OnPaint(HWND hwnd)
     EndPaint(hwnd, &ps);
     //obj->OnPaint(hwnd);
 }
-
-
-
-
