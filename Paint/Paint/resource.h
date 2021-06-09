@@ -23,7 +23,6 @@
 #define ID_DRAW_TEXT                    121
 #define IDR_MAINFRAME                   128
 #define IDB_BITMAP1                     129
-#define IDC_FINISH_TEXTBOX				130
 #define IDI_ICON2                       131
 #define ID_CHOOSE_COLOR                 32771
 #define ID_CHOOSE_FONT                  32772
