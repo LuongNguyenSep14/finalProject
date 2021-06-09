@@ -1,6 +1,4 @@
-﻿
-//
-#include "Paint.h"
+﻿#include "Paint.h"
 
 #define MAX_LOADSTRING  100
 #define MAX_BUFF		255
@@ -11,9 +9,24 @@ int toX = 0;
 int toY = 0;
 bool isDown = false;
 bool isPreview = false;
+bool selected = false;
+bool selectButton = false;
+bool isMoving = false;
+bool mouseDown = false;
+int mouseX = 0;
+int mouseY = 0;
+int oriFx;
+int oriFy;
+int oldColor;
+int oldStyle;
+
 shared_ptr<Object> obj;
 vector<shared_ptr<Object>> objects;
+Object* selectedPtr = NULL;
+
 PAINTSTRUCT ps;
+POINT p;
+RECT rc;
 
 int id_button = ID_DRAW_RECTANGLE;
 
@@ -186,7 +199,8 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
         { 0, ID_DRAW_ELLIPSE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 1, ID_DRAW_RECTANGLE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 2, ID_DRAW_LINE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
-        { 3, ID_DRAW_TEXT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
+        { 3, ID_DRAW_TEXT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
+        { 4, ID_SELECT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
     };
     TBADDBITMAP	tbBitmap = { hInst, IDB_BITMAP1 };
     
@@ -197,10 +211,22 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     userButtons[2].iBitmap += idx;
     userButtons[3].iBitmap += idx;
     userButtons[4].iBitmap += idx;
+    userButtons[5].iBitmap += idx;
+
     //how to define the button ?
     // Thêm nút bấm vào toolbar
     SendMessage(hToolBarWnd, TB_ADDBUTTONS, (WPARAM)sizeof(userButtons) / sizeof(TBBUTTON),
         (LPARAM)(LPTBBUTTON)&userButtons);
+
+    //STATUS BAR                               
+    HWND StatusBar = CreateWindowEx(0,STATUSCLASSNAME,(PCTSTR)NULL,SBARS_SIZEGRIP |WS_CHILD | WS_VISIBLE,0, 0, 0, 0,
+        hwnd, (HMENU)IDC_STATUSBAR, hInst,NULL);
+
+    int StatusSize[] = { 100, 200 , -1 };
+    SendMessage(StatusBar, SB_SETPARTS, 3, (LPARAM)&StatusSize);
+
+    //Get RECT
+    GetClientRect(hwnd, &rc);
 
     return TRUE;
 }
@@ -260,16 +286,19 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         //MessageBox( 0, 0, 0, 0 );
         break;
     case ID_DRAW_ELLIPSE:
-
+        selectButton = false;
         id_button = ID_DRAW_ELLIPSE;
-        
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Ellipse");      
         break;
     case ID_DRAW_LINE:
-
+        selectButton = false;
         id_button = ID_DRAW_LINE;
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Line");
         break;
     case ID_DRAW_RECTANGLE:
+        selectButton = false;
         id_button = ID_DRAW_RECTANGLE;
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Rectangle");
         break;
 
     case ID_EDIT_DELETE:
@@ -277,6 +306,11 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         //Rect
         InvalidateRect(hwnd, NULL, FALSE );
         break;
+    case ID_SELECT:
+    selectButton = true;
+
+    SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Select");
+    break;
     }
 }
 
@@ -288,66 +322,137 @@ void OnDestroy(HWND hwnd)
 //starting point
 void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
 {
-    isDown = true;
-    isPreview = true;
-    fromX = x;
-    fromY = y;
-    HDC hdc = GetDC(hwnd);
-    MoveToEx(hdc, x, y, NULL);
+    if (selectButton)
+        isPreview = false;
+    else isPreview = true;
+    mouseDown = true;
+  
+    if (isPreview)
+    {
+        fromX = x;
+        fromY = y;
+    }
+    else if (selectButton)
+    {
+        for(int i=0; i< objects.size(); i++)
+        if (objects[i]->checkCollision(mouseX, mouseY))
+        {
+            selected = true;
 
+            selectedPtr = (objects[i]).get();
 
+            oldColor = selectedPtr->getcolor();
+            oldStyle = selectedPtr->getStyle();
+            selectedPtr->setColor(RGB(0, 0, 0));
+            selectedPtr->setStyle(1);
+        }
+    }
 }
 
 //release mouse
 void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
 {
-    isDown = false;
-    isPreview = false;
-    // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
-    InvalidateRect(hwnd, NULL, TRUE);
+    if (isPreview)
+    {
+        objects.push_back(obj);
+        isPreview = false;
+    }
 
-   // obj->OnLButtonUp(hwnd, x, y, keyFlags);
-    objects.push_back(obj);
+    mouseDown = false;
+    isMoving = false;
+    selected = false;
+
+    if (selectedPtr != NULL)
+    {
+        selectedPtr->setColor(oldColor);
+        selectedPtr->setStyle(oldStyle);
+        selectedPtr = NULL;
+    }
+          
+    InvalidateRect(hwnd, &rc, FALSE);
 }
 
 //preview
 void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 {
-    if (isPreview) 
+     mouseX = x;
+    mouseY = y;
+
+    WCHAR text[30];
+    wsprintf(text, L"%d, %dpx", mouseX, mouseY);
+    SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 0, (LPARAM)text);
+
+    if (isPreview)
     {
         toX = x;
         toY = y;
-
-        InvalidateRect(hwnd, NULL, TRUE);
+        InvalidateRect(hwnd, &rc, FALSE);
     }
+    else if (!isPreview && selected && mouseDown)
+    {
+        oriFx = selectedPtr->getTo().x;
+        oriFy = selectedPtr->getTo().y;
 
+        isMoving = true;
+        selectedPtr->Moving(mouseX, mouseY, oriFx, oriFy);
+        InvalidateRect(hwnd, &rc, FALSE);
+    }
 }
-
 
 
 void OnPaint(HWND hwnd)
 {
-    
     obj = Factory::instance()->create(id_button);
+    HDC hdcMem;
+    HBITMAP hbmMem, hbmOld;
+    HPEN hPen;
+    //HFONT hfntOld;
+
     HDC hdc = BeginPaint(hwnd, &ps);
+    // Create a compatible DC.
+    hdcMem = CreateCompatibleDC(hdc);
+    // Create a bitmap big enough for our client rectangle.
+    hbmMem = CreateCompatibleBitmap(hdc, rc.right - rc.left, rc.bottom - rc.top);
+    // Select the bitmap into the off-screen DC.
+    hbmOld = (HBITMAP)SelectObject(hdcMem, hbmMem);
+    // Erase the background.
+    FillRect(hdcMem, &rc, HBRUSH(RGB(255, 255, 255)));
+    
+    //if (hfnt) {hfntOld = SelectObject(hdcMem, hfnt);};
 
-
-
-    HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
-
-    SelectObject(hdc, hPen);
+    // Render the image into the offscreen DC.
+    //SetBkMode(hdcMem, TRANSPARENT);
+    hPen = CreatePen(PS_SOLID, 1, rgbCurrent);
+    SelectObject(hdcMem, hPen);
 
     obj->setColor(rgbCurrent);
     obj->setFrom(Point(fromX, fromY));
     obj->setTo(Point(toX, toY));
-    obj->draw(hdc);
+    obj->setSize(1);
+    obj->setStyle(0); //solid = 0;
 
     for (int i = 0; i < objects.size(); i++)
     {
-        hPen = CreatePen(PS_DASHDOT, 3, objects[i]->getcolor());
-        SelectObject(hdc, hPen);
-        objects[i]->draw(hdc);
+       HPEN hNewPen = CreatePen(objects[i]->getStyle(), objects[i]->getSize(), objects[i]->getcolor());
+       SelectObject(hdcMem, hNewPen);
+       objects[i]->draw(hdcMem);
+       DeleteObject(hNewPen);
     }
+  
+    SelectObject(hdcMem, hPen);
+    if (isPreview)
+        obj->draw(hdcMem);   
+
+    // Blt the changes to the screen DC.
+    BitBlt(hdc, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, hdcMem, 0, 0, SRCCOPY);
+
+    // Done with off-screen bitmap and DC.
+    //SwapBuffers(hdc);
+    SelectObject(hdcMem, hbmOld);
+    DeleteObject(hbmMem);
+    DeleteDC(hdcMem);
+    DeleteObject(hPen);
+    ReleaseDC(hwnd, hdc);
 
     EndPaint(hwnd, &ps);
 }
