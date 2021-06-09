@@ -316,8 +316,6 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
     }
 }
 
-
-
 void OnPaint(HWND hwnd)
 {
     
