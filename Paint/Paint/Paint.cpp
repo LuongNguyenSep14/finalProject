@@ -1,5 +1,9 @@
+<<<<<<< Updated upstream
 ﻿// Paint.cpp : Defines the entry point for the application.
 //
+=======
+﻿#include "Paint.h"
+>>>>>>> Stashed changes
 
 #include "framework.h"
 #include "Paint.h"
@@ -56,6 +60,26 @@ int fromY = 0;
 int toX = 0;
 int toY = 0;
 bool isPreview = false;
+<<<<<<< Updated upstream
+=======
+bool mouseDown = false;
+bool selected = false;
+bool selectButton = false;
+bool isMoving = false;
+int mouseX = 0;
+int mouseY = 0;
+
+vector<shared_ptr<Object>> shapes;
+shared_ptr<Object> obj;
+shared_ptr<Object> selectedObj; //for cut, copy, paste maybe?
+Object* selectedPtr = NULL;
+int oriFx;
+int oriFy;
+
+PAINTSTRUCT ps;
+POINT p;
+RECT rc;
+>>>>>>> Stashed changes
 
 int id_button = ID_DRAW_RECTANGLE;
 shared_ptr<Object> obj = nullptr;
@@ -98,13 +122,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     return (int) msg.wParam;
 }
 
-
-
-//
 //  FUNCTION: MyRegisterClass()
-//
 //  PURPOSE: Registers the window class.
-//
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
     WNDCLASSEXW wcex;
@@ -118,7 +137,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hInstance      = hInstance;
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON2));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_BTNFACE+1);
+    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW);
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_PAINT);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_ICON2));
@@ -126,6 +145,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
+<<<<<<< Updated upstream
 //
 //   FUNCTION: InitInstance(HINSTANCE, int)
 //
@@ -136,6 +156,8 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //        In this function, we save the instance handle in a global variable and
 //        create and display the main program window.
 //
+=======
+>>>>>>> Stashed changes
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
@@ -154,6 +176,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
+<<<<<<< Updated upstream
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -164,6 +187,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY  - post a quit message and return
 //
 //
+=======
+>>>>>>> Stashed changes
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
@@ -186,6 +211,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hWnd, WM_LBUTTONDOWN, OnLButtonDown);
         HANDLE_MSG(hWnd, WM_LBUTTONUP, OnLButtonUp);
         HANDLE_MSG(hWnd, WM_MOUSEMOVE, OnMouseMove);
+
+    case WM_ERASEBKGND:
+        return (LRESULT)1;
 
     default:
         obj = ObjectFactory::instance()->create(ID_DRAW_RECTANGLE);
@@ -257,7 +285,8 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
         { 0, ID_DRAW_ELLIPSE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 1, ID_DRAW_RECTANGLE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 2, ID_DRAW_LINE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
-        { 3, ID_DRAW_TEXT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
+        { 3, ID_DRAW_TEXT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
+        { 4, ID_SELECT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
     };
     TBADDBITMAP	tbBitmap = { hInst, IDB_BITMAP1 };
     
@@ -268,10 +297,21 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     userButtons[2].iBitmap += idx;
     userButtons[3].iBitmap += idx;
     userButtons[4].iBitmap += idx;
-    //how to define the button ?
+    userButtons[5].iBitmap += idx;
+
     // Thêm nút bấm vào toolbar
     SendMessage(hToolBarWnd, TB_ADDBUTTONS, (WPARAM)sizeof(userButtons) / sizeof(TBBUTTON),
         (LPARAM)(LPTBBUTTON)&userButtons);
+
+    //STATUS BAR
+    HWND StatusBar = CreateWindowEx(0,STATUSCLASSNAME,(PCTSTR)NULL,SBARS_SIZEGRIP |WS_CHILD | WS_VISIBLE,0, 0, 0, 0,
+        hwnd, (HMENU)IDC_STATUSBAR, hInst,NULL);
+
+    int StatusSize[] = { 100, 200 , -1 };
+    SendMessage(StatusBar, SB_SETPARTS, 3, (LPARAM)&StatusSize);
+
+    //Get RECT
+    GetClientRect(hwnd, &rc);
 
     return TRUE;
 }
@@ -311,26 +351,35 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         break;
 
     case ID_DRAW_ELLIPSE:
-
+        selectButton = false;
         id_button = ID_DRAW_ELLIPSE;
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Ellipse");
         
         break;
     case ID_DRAW_LINE:
-
+        selectButton = false;
         id_button = ID_DRAW_LINE;
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Line");
+
         break;
     case ID_DRAW_RECTANGLE:
+        selectButton = false;
         id_button = ID_DRAW_RECTANGLE;
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Rectangle");
+
         break;
 
     case ID_EDIT_DELETE:
-        //quick debug
-        //Rect
-        InvalidateRect(hwnd, NULL, FALSE );
+        InvalidateRect(hwnd, NULL, TRUE);
+        //isPreview = false;
+        //BeginPaint(hdc, &ps);
         break;
-    }
-    
-    
+    case ID_SELECT:
+        selectButton = true;
+
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Select");
+        break;
+    }  
 }
 
 void OnDestroy(HWND hwnd)
@@ -338,34 +387,42 @@ void OnDestroy(HWND hwnd)
     PostQuitMessage(0);
 }
 
-//starting point
-void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
+void OnPaint(HWND hwnd)
 {
-    isPreview = true;
-    fromX = x;
-    fromY = y;
-    HDC hdc = GetDC(hwnd);
-    MoveToEx(hdc, x, y, NULL);
+    obj = Factory::instance()->create(id_button);
+    HDC hdcMem;
+    HBITMAP hbmMem, hbmOld;
+    HPEN hPen;
+    //HFONT hfntOld;
 
-}
+    HDC hdc = BeginPaint(hwnd, &ps);
+    // Create a compatible DC.
+    hdcMem = CreateCompatibleDC(hdc);
+    // Create a bitmap big enough for our client rectangle.
+    hbmMem = CreateCompatibleBitmap(hdc, rc.right - rc.left, rc.bottom - rc.top);
+    // Select the bitmap into the off-screen DC.
+    hbmOld = (HBITMAP)SelectObject(hdcMem, hbmMem);
+    // Erase the background.
+    FillRect(hdcMem, &rc, HBRUSH(RGB(255, 255, 255)));
+    
+    //if (hfnt) {hfntOld = SelectObject(hdcMem, hfnt);};
 
-//release mouse
-void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
-{
-    isPreview = false;
-    // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
-    InvalidateRect(hwnd, NULL, TRUE);
-   // obj->OnLButtonUp(hwnd, x, y, keyFlags);
-}
+    // Render the image into the offscreen DC.
+    //SetBkMode(hdcMem, TRANSPARENT);
+    hPen = CreatePen(PS_SOLID, 1, rgbCurrent);
+    SelectObject(hdcMem, hPen);
 
-//preview
-void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
-{
-    if (isPreview) 
+    obj->setColor(rgbCurrent);
+    obj->setFrom(Point(fromX, fromY));
+    obj->setTo(Point(toX, toY));
+    obj->setSize(1);
+    obj->setStyle(0); //solid = 0;
+
+    for (int i = 0; i < shapes.size(); i++)
     {
-        toX = x;
-        toY = y;
+       HPEN hNewPen = CreatePen(shapes[i]->getStyle(), shapes[i]->getSize(), shapes[i]->getcolor());
 
+<<<<<<< Updated upstream
         // Báo hiệu cần xóa đi toàn bộ màn hình
         InvalidateRect(hwnd, NULL, TRUE);
     }
@@ -381,11 +438,58 @@ void OnPaint(HWND hwnd)
 
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
+=======
+       SelectObject(hdcMem, hNewPen);
+       shapes[i]->draw(hdcMem);
+       DeleteObject(hNewPen);
+    }
+    SelectObject(hdcMem, hPen);
+    if (isPreview)
+        obj->draw(hdcMem);   
 
-    HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
-    SelectObject(hdc, hPen);
+    // Blt the changes to the screen DC.
+    BitBlt(hdc, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, hdcMem, 0, 0, SRCCOPY);
 
+    // Done with off-screen bitmap and DC.
+    //SwapBuffers(hdc);
+    SelectObject(hdcMem, hbmOld);
+    DeleteObject(hbmMem);
+    DeleteDC(hdcMem);
+    DeleteObject(hPen);
+    ReleaseDC(hwnd, hdc);
 
+    EndPaint(hwnd, &ps);
+}
+
+//starting point
+void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
+{
+    if (selectButton)
+        isPreview = false;
+    else isPreview = true;
+    mouseDown = true;
+>>>>>>> Stashed changes
+
+    if (isPreview)
+    {
+        fromX = x;
+        fromY = y;
+    }
+    else if (selectButton)
+    {
+        for(int i=0; i<shapes.size(); i++)
+        if (shapes[i]->checkCollision(mouseX, mouseY))
+        {
+            selected = true;
+
+            selectedPtr = (shapes[i]).get();
+            selectedPtr->setColor(RGB(0, 0, 0));
+            selectedPtr->setStyle(1);
+        }
+    }
+}
+
+<<<<<<< Updated upstream
     if (id_button == ID_DRAW_RECTANGLE)
         Rectangle(hdc, fromX, fromY, toX, toY);
     else if (id_button == ID_DRAW_ELLIPSE)
@@ -395,13 +499,46 @@ void OnPaint(HWND hwnd)
         MoveToEx(hdc, fromX, fromY, NULL);
         LineTo(hdc, toX, toY);
     }
+=======
+void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
+{
+    mouseX = x;
+    mouseY = y;
+>>>>>>> Stashed changes
 
+    WCHAR text[30];
+    wsprintf(text, L"%d, %dpx", mouseX, mouseY);
+    SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 0, (LPARAM)text);
 
+    if (isPreview)
+    {
+        toX = x;
+        toY = y;
+        InvalidateRect(hwnd, &rc, FALSE);
+    }
+    else if (!isPreview && selected && mouseDown)
+    {
+        oriFx = selectedPtr->getTo().x;
+        oriFy = selectedPtr->getTo().y;
 
-    EndPaint(hwnd, &ps);
-    //obj->OnPaint(hwnd);
+        isMoving = true;
+        selectedPtr->Moving(mouseX, mouseY, oriFx, oriFy);
+        InvalidateRect(hwnd, &rc, FALSE);
+    }
 }
 
+void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
+{
+    if (isPreview)
+    {
+        shapes.push_back(obj);
+        isPreview = false;
+    }
 
-
-
+    mouseDown = false;
+    isMoving = false;
+    selected = false;
+    selectedPtr = NULL;
+        
+    InvalidateRect(hwnd, &rc, FALSE);
+}

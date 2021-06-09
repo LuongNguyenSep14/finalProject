@@ -21,6 +21,8 @@
 #define ID_DRAW_RECTANGLE               119
 #define ID_DRAW_LINE                    120
 #define ID_DRAW_TEXT                    121
+#define ID_SELECT                       122
+#define IDC_STATUSBAR                   123
 #define IDR_MAINFRAME                   128
 #define IDB_BITMAP1                     129
 #define IDI_ICON2                       131
@@ -36,6 +38,6 @@
 #define _APS_NEXT_RESOURCE_VALUE        132
 #define _APS_NEXT_COMMAND_VALUE         32773
 #define _APS_NEXT_CONTROL_VALUE         1000
-#define _APS_NEXT_SYMED_VALUE           122
+#define _APS_NEXT_SYMED_VALUE           124
 #endif
 #endif
