@@ -2,12 +2,17 @@
 //
 #include "Paint.h"
 
+#define MAX_LOADSTRING  100
+#define MAX_BUFF		255
 
 int fromX = 0;
 int fromY = 0;
 int toX = 0;
 int toY = 0;
+bool isDown = false;
 bool isPreview = false;
+shared_ptr<Object> obj;
+vector<shared_ptr<Object>> objects;
 PAINTSTRUCT ps;
 
 int id_button = ID_DRAW_RECTANGLE;
@@ -84,16 +89,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+   hPaint = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
-   if (!hWnd)
+   if (!hPaint)
    {
       return FALSE;
    }
 
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
+   ShowWindow(hPaint, nCmdShow);
+   UpdateWindow(hPaint);
 
    return TRUE;
 }
@@ -200,6 +205,15 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     return TRUE;
 }
 
+void view_file(TCHAR* path)
+{
+
+}
+
+void openFileDialog(HWND hwnd);
+
+void saveFileDialog(HWND hwnd);
+
 void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
     switch (id)
@@ -234,6 +248,17 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         }
         break;
 
+    case ID_FILE_OPEN:
+        //MessageBox( 0, 0, 0, 0 );
+        openFileDialog(hwnd);
+        break;
+    case ID_FILE_NEW:
+        MessageBox( 0, 0, 0, 0 );
+        break;
+    case ID_FILE_SAVE:
+        saveFileDialog(hwnd);
+        //MessageBox( 0, 0, 0, 0 );
+        break;
     case ID_DRAW_ELLIPSE:
 
         id_button = ID_DRAW_ELLIPSE;
@@ -253,8 +278,6 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         InvalidateRect(hwnd, NULL, FALSE );
         break;
     }
-    
-    
 }
 
 void OnDestroy(HWND hwnd)
@@ -265,21 +288,26 @@ void OnDestroy(HWND hwnd)
 //starting point
 void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
 {
+    isDown = true;
     isPreview = true;
     fromX = x;
     fromY = y;
     HDC hdc = GetDC(hwnd);
     MoveToEx(hdc, x, y, NULL);
 
+
 }
 
 //release mouse
 void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
 {
+    isDown = false;
     isPreview = false;
     // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
     InvalidateRect(hwnd, NULL, TRUE);
+
    // obj->OnLButtonUp(hwnd, x, y, keyFlags);
+    objects.push_back(obj);
 }
 
 //preview
@@ -295,28 +323,168 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 
 }
 
+
+
 void OnPaint(HWND hwnd)
 {
-
-    shared_ptr<Object> obj = Factory::instance()->create(id_button);
-
+    
+    obj = Factory::instance()->create(id_button);
     HDC hdc = BeginPaint(hwnd, &ps);
 
-    HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
-    SelectObject(hdc, hPen);
 
+
+    HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
+
+    SelectObject(hdc, hPen);
 
     obj->setColor(rgbCurrent);
     obj->setFrom(Point(fromX, fromY));
     obj->setTo(Point(toX, toY));
     obj->draw(hdc);
 
-
+    for (int i = 0; i < objects.size(); i++)
+    {
+        hPen = CreatePen(PS_DASHDOT, 3, objects[i]->getcolor());
+        SelectObject(hdc, hPen);
+        objects[i]->draw(hdc);
+    }
 
     EndPaint(hwnd, &ps);
-    //obj->OnPaint(hwnd);
 }
 
+void saveToBinaryFile(string filePath) {
+    std::ofstream out;
+    out.open(filePath, std::iostream::out | std::iostream::binary | std::iostream::trunc);
+
+    if (out.is_open()) {
+        int size = objects.size();
+        out.write(reinterpret_cast<const char*>(&size), sizeof(size));
+
+        for (shared_ptr<Object> shape : objects) {
+            int id = shape->getID();
+            COLORREF color = shape->getcolor();
+            RECT* rect = shape->getDimens();
+            out.write(reinterpret_cast<const char*>(&id), sizeof(id));
+            out.write(reinterpret_cast<const char*>(&color), sizeof(COLORREF));
+            out.write(reinterpret_cast<const char*>(rect), sizeof(RECT));
+        }
+    }
+    else {
+        OutputDebugString(L"Can't open data.bin to write");
+    }
+
+    out.close();
+}
+
+void loadFromBinaryFile(string filePath) {
+    ifstream in;
+    in.open(filePath, ios::in | ios::binary);
+
+    if (in.is_open()) {
+        char* buffer = new char[MAX_BUFF];
+        int size;
+        in.read(buffer, sizeof(size));
+
+        size = buffer[0];
+        objects.clear();
 
 
+        for (int i = 0; i < size; i++)
+        {
+            char* item_buff = new char[MAX_BUFF];
 
+            shared_ptr<Object> shape;
+
+            int id;
+            COLORREF color;
+            in.read(item_buff, sizeof(id));
+            id = item_buff[0];
+            in.read(item_buff, sizeof(COLORREF));
+            color = item_buff[0];
+            int r = GetRValue(color);
+            color = item_buff[1];
+            int g = GetGValue(color);
+            color = item_buff[2];
+            int b = GetBValue(color);
+
+            color = RGB(r, g, b);
+
+            shape = Factory::instance()->create(id);
+
+            shape->setColor(color);
+
+            RECT* rect;
+            in.read(item_buff, sizeof(RECT));
+            rect = reinterpret_cast<RECT*>(item_buff);
+            shape->setDimens(rect);
+
+            objects.push_back(shape);
+
+            delete[] item_buff;
+            item_buff = NULL;
+        }
+
+        delete[] buffer;
+    }
+    else {
+
+        OutputDebugString(L"Can't open data.bin to read");
+    }
+
+    in.close();
+}
+
+void openFileDialog(HWND hwnd)
+{
+    OPENFILENAME ofn;
+    WCHAR szFilePath[MAX_PATH] = L"";
+    WCHAR szFileTitle[MAX_PATH] = L"";
+
+    ZeroMemory(&ofn, sizeof(ofn));
+
+    ofn.lStructSize = sizeof(ofn); // SEE NOTE BELOW
+    ofn.hwndOwner = hwnd;
+    ofn.lpstrFilter = L"Binary Files (*.bin)\0*.bin\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFile = szFilePath;
+    ofn.lpstrFileTitle = szFileTitle;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+    ofn.lpstrDefExt = L"bin";
+
+    if (GetOpenFileName(&ofn))
+    {
+        // Do something usefull with the filename stored in szFileName 
+        wstring ws(szFilePath);
+        // your new String
+        string fileName(ws.begin(), ws.end());
+        loadFromBinaryFile(fileName);
+        InvalidateRect(hwnd, NULL, TRUE);
+    }
+}
+
+void saveFileDialog(HWND hwnd)
+{
+    OPENFILENAME ofn;
+    WCHAR szFileName[MAX_PATH] = L"";
+
+    ZeroMemory(&ofn, sizeof(ofn));
+
+    ofn.lStructSize = sizeof(ofn); // SEE NOTE BELOW
+    ofn.hwndOwner = hwnd;
+    ofn.lpstrFilter = L"Binary Files (*.bin)\0*.bin\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFile = szFileName;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
+    ofn.lpstrDefExt = L"bin";
+
+    if (GetSaveFileName(&ofn))
+    {
+        // Do something usefull with the filename stored in szFileName 
+        wstring ws(szFileName);
+        // your new String
+        string fileName(ws.begin(), ws.end());
+
+        //defaultFilePath = fileName;
+        saveToBinaryFile(fileName);
+    }
+}
