@@ -334,18 +334,18 @@ void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
     }
     else if (selectButton)
     {
-        for(int i=0; i< objects.size(); i++)
-        if (objects[i]->checkCollision(mouseX, mouseY))
-        {
-            selected = true;
+        for (int i = 0; i < objects.size(); i++)
+            if (objects[i]->checkCollision(mouseX, mouseY))
+            {
+                selected = true;
 
-            selectedPtr = (objects[i]).get();
+                selectedPtr = (objects[i]).get();
 
-            oldColor = selectedPtr->getcolor();
-            oldStyle = selectedPtr->getStyle();
-            selectedPtr->setColor(RGB(0, 0, 0));
-            selectedPtr->setStyle(1);
-        }
+                oldColor = selectedPtr->getcolor();
+                oldStyle = selectedPtr->getStyle();
+                selectedPtr->setColor(RGB(0, 0, 0));
+                selectedPtr->setStyle(1);
+            }
     }
 }
 
