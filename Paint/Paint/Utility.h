@@ -85,6 +85,22 @@ public:
 		this->to = to;
 	}
 
+	virtual void setDimens(RECT* rect)
+	{
+		this->from = Point(rect->left, rect->top);
+		this->to = Point(rect->right, rect->bottom);
+	}
+
+	virtual RECT* getDimens()
+	{
+		RECT* rect = new RECT();
+		rect->left = this->from.x;
+		rect->top = this->from.y;
+		rect->right = this->to.x;
+		rect->bottom = this->to.y;
+		return rect;
+	}
+
 	virtual void draw(HDC& hdc) = 0;
 	virtual shared_ptr<Object> nextObject() = 0;
 
