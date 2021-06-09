@@ -11,7 +11,6 @@
 #include "Utility.h"
 #include <fstream>
 #include "Factory.h"
-#include <commdlg.h>
 
 #define IMAGE_WIDTH     18
 #define IMAGE_HEIGHT    18
@@ -36,7 +35,6 @@ HDC hdc;
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-HWND hPaint;									// Paint handle
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
