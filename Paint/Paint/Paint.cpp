@@ -205,11 +205,6 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     return TRUE;
 }
 
-void view_file(TCHAR* path)
-{
-
-}
-
 void openFileDialog(HWND hwnd);
 
 void saveFileDialog(HWND hwnd);
@@ -317,10 +312,8 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
     {
         toX = x;
         toY = y;
-
         InvalidateRect(hwnd, NULL, TRUE);
     }
-
 }
 
 
