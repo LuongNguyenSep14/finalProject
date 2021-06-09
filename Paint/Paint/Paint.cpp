@@ -2,20 +2,25 @@
 //
 #include "Paint.h"
 
-#define MAX_LOADSTRING  100
-#define MAX_BUFF		255
 
 int fromX = 0;
 int fromY = 0;
 int toX = 0;
 int toY = 0;
-bool isDown = false;
 bool isPreview = false;
-shared_ptr<Object> obj;
-vector<shared_ptr<Object>> objects;
 PAINTSTRUCT ps;
+bool isTyping = false;
+bool isModyfying = false;
+HWND textBox;
+HWND btnDone;
+HFONT hFont;
+
+//const int BUFFER_SIZE = 255;
+WCHAR buffer[BUFFER_SIZE];
+Text* text = new Text();
 
 int id_button = ID_DRAW_RECTANGLE;
+
 
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -89,16 +94,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
-   hPaint = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
-   if (!hPaint)
+   if (!hWnd)
    {
       return FALSE;
    }
 
-   ShowWindow(hPaint, nCmdShow);
-   UpdateWindow(hPaint);
+   ShowWindow(hWnd, nCmdShow);
+   UpdateWindow(hWnd);
 
    return TRUE;
 }
@@ -148,19 +153,29 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     // Lấy font hệ thống
     LOGFONT lf;
     GetObject(GetStockObject(DEFAULT_GUI_FONT), sizeof(LOGFONT), &lf);
-    HFONT hFont = CreateFont(lf.lfHeight, lf.lfWidth,
+    hFont = CreateFont(lf.lfHeight, lf.lfWidth,
         lf.lfEscapement, lf.lfOrientation, lf.lfWeight,
         lf.lfItalic, lf.lfUnderline, lf.lfStrikeOut, lf.lfCharSet,
         lf.lfOutPrecision, lf.lfClipPrecision, lf.lfQuality,
         lf.lfPitchAndFamily, lf.lfFaceName);
 
+
+  
     InitCommonControls();
+    btnDone = CreateWindowEx(NULL, L"BUTTON", L"Finish Text",
+        WS_CHILD | BS_PUSHBUTTON,
+        2, 30, 75, 30, hwnd,
+        (HMENU)IDC_FINISH_TEXTBOX, lpCreateStruct->hInstance, NULL);
+    SetWindowFont(btnDone, hFont, TRUE);
+
+
     TBBUTTON tbButtons[] =
     {
         { STD_FILENEW,	ID_FILE_NEW, TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { STD_FILEOPEN,	ID_FILE_OPEN, TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { STD_FILESAVE,	ID_FILE_SAVE, TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
     };
+
 
     HWND hToolBarWnd = CreateToolbarEx(hwnd,
         WS_CHILD | WS_VISIBLE | CCS_ADJUSTABLE | TBSTYLE_TOOLTIPS,
@@ -197,22 +212,15 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     userButtons[2].iBitmap += idx;
     userButtons[3].iBitmap += idx;
     userButtons[4].iBitmap += idx;
-    //how to define the button ?
-    // Thêm nút bấm vào toolbar
+
     SendMessage(hToolBarWnd, TB_ADDBUTTONS, (WPARAM)sizeof(userButtons) / sizeof(TBBUTTON),
         (LPARAM)(LPTBBUTTON)&userButtons);
 
+
+
+
     return TRUE;
 }
-
-void view_file(TCHAR* path)
-{
-
-}
-
-void openFileDialog(HWND hwnd);
-
-void saveFileDialog(HWND hwnd);
 
 void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -229,7 +237,9 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         {
             hbrush = CreateSolidBrush(cc.rgbResult);
             rgbCurrent = cc.rgbResult;
+
         }
+        ShowWindow(btnDone, 0);
         break;
 
     case ID_CHOOSE_FONT:
@@ -246,38 +256,43 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             rgbCurrent = cf.rgbColors;
             rgbPrev = SetTextColor(hdc, rgbCurrent);
         }
+        ShowWindow(btnDone, 0);
         break;
 
-    case ID_FILE_OPEN:
-        //MessageBox( 0, 0, 0, 0 );
-        openFileDialog(hwnd);
-        break;
-    case ID_FILE_NEW:
-        MessageBox( 0, 0, 0, 0 );
-        break;
-    case ID_FILE_SAVE:
-        saveFileDialog(hwnd);
-        //MessageBox( 0, 0, 0, 0 );
-        break;
     case ID_DRAW_ELLIPSE:
 
         id_button = ID_DRAW_ELLIPSE;
+        ShowWindow(btnDone, 0);
         
         break;
     case ID_DRAW_LINE:
 
         id_button = ID_DRAW_LINE;
+        ShowWindow(btnDone, 0);
         break;
     case ID_DRAW_RECTANGLE:
         id_button = ID_DRAW_RECTANGLE;
+        ShowWindow(btnDone, 0);
         break;
 
     case ID_EDIT_DELETE:
-        //quick debug
-        //Rect
-        InvalidateRect(hwnd, NULL, FALSE );
+        InvalidateRect(hwnd, NULL, TRUE );
+        BeginPaint(hwnd, &ps);
+        ShowWindow(btnDone, 0);
         break;
+    case ID_DRAW_TEXT:
+        id_button = ID_DRAW_TEXT;
+        
+        ShowWindow(btnDone, SW_SHOW);
+        
+        break;
+    case IDC_FINISH_TEXTBOX:
+        MessageBox(0, text->getData(), 0, 0);
+        break;
+
     }
+    
+    
 }
 
 void OnDestroy(HWND hwnd)
@@ -288,26 +303,31 @@ void OnDestroy(HWND hwnd)
 //starting point
 void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
 {
-    isDown = true;
     isPreview = true;
     fromX = x;
     fromY = y;
     HDC hdc = GetDC(hwnd);
     MoveToEx(hdc, x, y, NULL);
 
-
 }
 
 //release mouse
 void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
 {
-    isDown = false;
     isPreview = false;
-    // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
+    
     InvalidateRect(hwnd, NULL, TRUE);
 
-   // obj->OnLButtonUp(hwnd, x, y, keyFlags);
-    objects.push_back(obj);
+    if (ID_DRAW_TEXT == id_button)
+    {
+
+
+        
+        text->processing(hwnd, ps, fromX, fromY, toX, toY);
+
+        SetWindowFont(text->textBox, hFont, TRUE);
+    }
+ 
 }
 
 //preview
@@ -323,168 +343,54 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 
 }
 
-
-
 void OnPaint(HWND hwnd)
 {
-    
-    obj = Factory::instance()->create(id_button);
-    HDC hdc = BeginPaint(hwnd, &ps);
 
-
-
-    HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
-
-    SelectObject(hdc, hPen);
-
-    obj->setColor(rgbCurrent);
-    obj->setFrom(Point(fromX, fromY));
-    obj->setTo(Point(toX, toY));
-    obj->draw(hdc);
-
-    for (int i = 0; i < objects.size(); i++)
+    if (ID_DRAW_TEXT == id_button)
     {
-        hPen = CreatePen(PS_DASHDOT, 3, objects[i]->getcolor());
+        PAINTSTRUCT ps;
+        HDC hDC = BeginPaint(hwnd, &ps);
+
+        text->setFrom(Point(fromX, fromY));
+        text->setTo(Point(toX, toY));
+        text->draw(hdc);
+        EndPaint(hwnd, &ps);
+    }
+    else if (IDC_FINISH_TEXTBOX == id_button)
+    {
+        HDC hDC = BeginPaint(hwnd, &ps);
+        text->finish(hDC);
+
+    }
+    else
+    {
+        shared_ptr<Object> obj = Factory::instance()->create(id_button);
+
+        HDC hdc = BeginPaint(hwnd, &ps);
+
+        HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
         SelectObject(hdc, hPen);
-        objects[i]->draw(hdc);
-    }
 
-    EndPaint(hwnd, &ps);
+
+        obj->setColor(rgbCurrent);
+        obj->setFrom(Point(fromX, fromY));
+        obj->setTo(Point(toX, toY));
+        obj->draw(hdc);
+
+
+
+        EndPaint(hwnd, &ps);
+    }
+    //----------------------------------------------------------------
+
+    
+
+
+    
 }
 
-void saveToBinaryFile(string filePath) {
-    std::ofstream out;
-    out.open(filePath, std::iostream::out | std::iostream::binary | std::iostream::trunc);
-
-    if (out.is_open()) {
-        int size = objects.size();
-        out.write(reinterpret_cast<const char*>(&size), sizeof(size));
-
-        for (shared_ptr<Object> shape : objects) {
-            int id = shape->getID();
-            COLORREF color = shape->getcolor();
-            RECT* rect = shape->getDimens();
-            out.write(reinterpret_cast<const char*>(&id), sizeof(id));
-            out.write(reinterpret_cast<const char*>(&color), sizeof(COLORREF));
-            out.write(reinterpret_cast<const char*>(rect), sizeof(RECT));
-        }
-    }
-    else {
-        OutputDebugString(L"Can't open data.bin to write");
-    }
-
-    out.close();
-}
-
-void loadFromBinaryFile(string filePath) {
-    ifstream in;
-    in.open(filePath, ios::in | ios::binary);
-
-    if (in.is_open()) {
-        char* buffer = new char[MAX_BUFF];
-        int size;
-        in.read(buffer, sizeof(size));
-
-        size = buffer[0];
-        objects.clear();
 
 
-        for (int i = 0; i < size; i++)
-        {
-            char* item_buff = new char[MAX_BUFF];
 
-            shared_ptr<Object> shape;
 
-            int id;
-            COLORREF color;
-            in.read(item_buff, sizeof(id));
-            id = item_buff[0];
-            in.read(item_buff, sizeof(COLORREF));
-            color = item_buff[0];
-            int r = GetRValue(color);
-            color = item_buff[1];
-            int g = GetGValue(color);
-            color = item_buff[2];
-            int b = GetBValue(color);
 
-            color = RGB(r, g, b);
-
-            shape = Factory::instance()->create(id);
-
-            shape->setColor(color);
-
-            RECT* rect;
-            in.read(item_buff, sizeof(RECT));
-            rect = reinterpret_cast<RECT*>(item_buff);
-            shape->setDimens(rect);
-
-            objects.push_back(shape);
-
-            delete[] item_buff;
-            item_buff = NULL;
-        }
-
-        delete[] buffer;
-    }
-    else {
-
-        OutputDebugString(L"Can't open data.bin to read");
-    }
-
-    in.close();
-}
-
-void openFileDialog(HWND hwnd)
-{
-    OPENFILENAME ofn;
-    WCHAR szFilePath[MAX_PATH] = L"";
-    WCHAR szFileTitle[MAX_PATH] = L"";
-
-    ZeroMemory(&ofn, sizeof(ofn));
-
-    ofn.lStructSize = sizeof(ofn); // SEE NOTE BELOW
-    ofn.hwndOwner = hwnd;
-    ofn.lpstrFilter = L"Binary Files (*.bin)\0*.bin\0All Files (*.*)\0*.*\0";
-    ofn.lpstrFile = szFilePath;
-    ofn.lpstrFileTitle = szFileTitle;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-    ofn.lpstrDefExt = L"bin";
-
-    if (GetOpenFileName(&ofn))
-    {
-        // Do something usefull with the filename stored in szFileName 
-        wstring ws(szFilePath);
-        // your new String
-        string fileName(ws.begin(), ws.end());
-        loadFromBinaryFile(fileName);
-        InvalidateRect(hwnd, NULL, TRUE);
-    }
-}
-
-void saveFileDialog(HWND hwnd)
-{
-    OPENFILENAME ofn;
-    WCHAR szFileName[MAX_PATH] = L"";
-
-    ZeroMemory(&ofn, sizeof(ofn));
-
-    ofn.lStructSize = sizeof(ofn); // SEE NOTE BELOW
-    ofn.hwndOwner = hwnd;
-    ofn.lpstrFilter = L"Binary Files (*.bin)\0*.bin\0All Files (*.*)\0*.*\0";
-    ofn.lpstrFile = szFileName;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
-    ofn.lpstrDefExt = L"bin";
-
-    if (GetSaveFileName(&ofn))
-    {
-        // Do something usefull with the filename stored in szFileName 
-        wstring ws(szFileName);
-        // your new String
-        string fileName(ws.begin(), ws.end());
-
-        //defaultFilePath = fileName;
-        saveToBinaryFile(fileName);
-    }
-}
