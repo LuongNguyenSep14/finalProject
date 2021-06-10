@@ -57,6 +57,15 @@
     <Image Include="paint.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="rec\shape2.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="rec\shape4.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="rec\shape3.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="App.manifest" />
