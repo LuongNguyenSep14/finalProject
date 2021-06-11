@@ -1,6 +1,4 @@
-﻿
-//
-#include "Paint.h"
+﻿#include "Paint.h"
 
 #define MAX_LOADSTRING  100
 #define MAX_BUFF		255
@@ -11,6 +9,17 @@ int toX = 0;
 int toY = 0;
 bool isDown = false;
 bool isPreview = false;
+bool selected = false;
+bool selectButton = false;
+bool isMoving = false;
+bool mouseDown = false;
+int mouseX = 0;
+int mouseY = 0;
+int oriFx;
+int oriFy;
+int oldColor;
+int oldStyle;
+
 shared_ptr<Object> obj;
 vector<shared_ptr<Object>> objects;
 PAINTSTRUCT ps;
