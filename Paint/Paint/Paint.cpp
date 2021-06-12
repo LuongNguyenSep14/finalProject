@@ -231,11 +231,6 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     return TRUE;
 }
 
-void view_file(TCHAR* path)
-{
-
-}
-
 void openFileDialog(HWND hwnd);
 
 void saveFileDialog(HWND hwnd);
@@ -275,7 +270,6 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         break;
 
     case ID_FILE_OPEN:
-        //MessageBox( 0, 0, 0, 0 );
         openFileDialog(hwnd);
         break;
     case ID_FILE_NEW:
@@ -283,7 +277,6 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         break;
     case ID_FILE_SAVE:
         saveFileDialog(hwnd);
-        //MessageBox( 0, 0, 0, 0 );
         break;
     case ID_DRAW_ELLIPSE:
         selectButton = false;
@@ -375,7 +368,7 @@ void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
 //preview
 void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 {
-     mouseX = x;
+    mouseX = x;
     mouseY = y;
 
     WCHAR text[30];
@@ -457,24 +450,32 @@ void OnPaint(HWND hwnd)
     EndPaint(hwnd, &ps);
 }
 
-void saveToBinaryFile(string filePath) {
+void saveToBinaryFile(string filePath) 
+{
     std::ofstream out;
     out.open(filePath, std::iostream::out | std::iostream::binary | std::iostream::trunc);
 
-    if (out.is_open()) {
+    if (out.is_open()) 
+    {
         int size = objects.size();
         out.write(reinterpret_cast<const char*>(&size), sizeof(size));
 
-        for (shared_ptr<Object> shape : objects) {
+        for (shared_ptr<Object> shape : objects) 
+        {
             int id = shape->getID();
             COLORREF color = shape->getcolor();
             RECT* rect = shape->getDimens();
+            int style = shape->getStyle();
+            int size = shape->getSize();
             out.write(reinterpret_cast<const char*>(&id), sizeof(id));
             out.write(reinterpret_cast<const char*>(&color), sizeof(COLORREF));
             out.write(reinterpret_cast<const char*>(rect), sizeof(RECT));
+            out.write(reinterpret_cast<const char*>(&style), sizeof(style));
+            out.write(reinterpret_cast<const char*>(&size), sizeof(size));
         }
     }
-    else {
+    else 
+    {
         OutputDebugString(L"Can't open data.bin to write");
     }
 
@@ -522,6 +523,17 @@ void loadFromBinaryFile(string filePath) {
             in.read(item_buff, sizeof(RECT));
             rect = reinterpret_cast<RECT*>(item_buff);
             shape->setDimens(rect);
+
+            int style;
+            in.read(item_buff, sizeof(style));
+            style = item_buff[0];
+
+            int size;
+            in.read(item_buff, sizeof(style));
+            size = item_buff[0];
+
+            shape->setStyle(style);
+            shape->setSize(size);
 
             objects.push_back(shape);
 
@@ -574,7 +586,7 @@ void saveFileDialog(HWND hwnd)
 
     ZeroMemory(&ofn, sizeof(ofn));
 
-    ofn.lStructSize = sizeof(ofn); // SEE NOTE BELOW
+    ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = hwnd;
     ofn.lpstrFilter = L"Binary Files (*.bin)\0*.bin\0All Files (*.*)\0*.*\0";
     ofn.lpstrFile = szFileName;
@@ -584,12 +596,11 @@ void saveFileDialog(HWND hwnd)
 
     if (GetSaveFileName(&ofn))
     {
-        // Do something usefull with the filename stored in szFileName 
+        // Create wstring with the file's path
         wstring ws(szFileName);
         // your new String
         string fileName(ws.begin(), ws.end());
 
-        //defaultFilePath = fileName;
         saveToBinaryFile(fileName);
     }
 }
