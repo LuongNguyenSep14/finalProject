@@ -17,12 +17,17 @@ int mouseX = 0;
 int mouseY = 0;
 int oriFx;
 int oriFy;
-int oldColor;
+int indexCutObj = -1;
+DWORD oldColor;
 int oldStyle;
 
+bool copyButton = false;
+
+shared_ptr<Object> cloneObjPtr = NULL;
 shared_ptr<Object> obj;
 vector<shared_ptr<Object>> objects;
 Object* selectedPtr = NULL;
+
 
 PAINTSTRUCT ps;
 POINT p;
@@ -200,9 +205,11 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
         { 1, ID_DRAW_RECTANGLE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 2, ID_DRAW_LINE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 3, ID_DRAW_TEXT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
-        { 4, ID_SELECT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
+        { 4, ID_SELECT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
+        { 5, ID_REDO,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
+        { 6, ID_UNDO,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
     };
-    TBADDBITMAP	tbBitmap = { hInst, IDB_BITMAP1 };
+    TBADDBITMAP	tbBitmap = { hInst, IDB_BITMAP2 };
     
     int idx = SendMessage(hToolBarWnd, TB_ADDBITMAP, (WPARAM)sizeof(tbBitmap) / sizeof(TBADDBITMAP),
         (LPARAM)(LPTBADDBITMAP)&tbBitmap);
@@ -212,6 +219,8 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     userButtons[3].iBitmap += idx;
     userButtons[4].iBitmap += idx;
     userButtons[5].iBitmap += idx;
+    userButtons[6].iBitmap += idx;
+    userButtons[7].iBitmap += idx;
 
     //how to define the button ?
     // Thêm nút bấm vào toolbar
@@ -279,32 +288,83 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         saveFileDialog(hwnd);
         break;
     case ID_DRAW_ELLIPSE:
+        selected = false;
         selectButton = false;
         id_button = ID_DRAW_ELLIPSE;
         SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Ellipse");      
         break;
     case ID_DRAW_LINE:
         selectButton = false;
+        selected = false;
         id_button = ID_DRAW_LINE;
         SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Line");
         break;
     case ID_DRAW_RECTANGLE:
         selectButton = false;
+        selected = false;
         id_button = ID_DRAW_RECTANGLE;
         SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Rectangle");
         break;
-
     case ID_EDIT_DELETE:
-        //quick debug
-        //Rect
-        InvalidateRect(hwnd, NULL, FALSE );
+        if (selected)
+        {
+            Delete();
+            selected = false;
+            selectButton = false;
+            InvalidateRect(hwnd, &rc, FALSE);
+        }      
         break;
     case ID_SELECT:
-    selectButton = true;
+        selectButton = true;
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Select");
+        break;
+    case ID_EDIT_CUT:
+        selectButton = false;
+        Copy();
+        Delete();    
+        selected = false;
+        InvalidateRect(hwnd, &rc, FALSE);
+        break;
+    case ID_EDIT_COPY:
+        selectButton = false;
+        Copy();
+        if(cloneObjPtr != NULL)
+            SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"Copied");
+        selected = false;
+        break;
+    case ID_EDIT_PASTE: 
+        if (cloneObjPtr != NULL)
+        {
+            int width = abs(cloneObjPtr->getFrom().x - cloneObjPtr->getTo().x);
+            int height = abs(cloneObjPtr->getFrom().y - cloneObjPtr->getTo().y);
+            cloneObjPtr->setFrom(Point(5,30));
+            cloneObjPtr->setTo(Point(width + 5, height + 30));
+            cloneObjPtr->setColor(oldColor);
+            cloneObjPtr->setStyle(oldStyle);
 
-    SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Select");
-    break;
-    }
+            objects.push_back(cloneObjPtr->Clone());
+            SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"");
+
+            //SMALL DETAIL
+            int IDtemp = objects.back()->getID();
+            wstring ttext;
+
+            if (IDtemp == ID_DRAW_LINE)
+                ttext = L"Line";
+            else if (IDtemp == ID_DRAW_RECTANGLE)
+                ttext = L"Rectangle";
+            else if (IDtemp == ID_DRAW_ELLIPSE)
+                ttext = L"Ellipse";
+            SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)ttext.c_str());
+            //
+
+            cloneObjPtr.reset();
+            cloneObjPtr = NULL;
+
+            InvalidateRect(hwnd, &rc, FALSE);
+        }
+        break;
+    } 
 }
 
 void OnDestroy(HWND hwnd)
@@ -312,56 +372,68 @@ void OnDestroy(HWND hwnd)
     PostQuitMessage(0);
 }
 
+void Copy()
+{
+    if (selectedPtr != NULL && selected)
+    {
+        if (cloneObjPtr != NULL)
+            cloneObjPtr.reset();
+
+        cloneObjPtr = selectedPtr->Clone();
+    }
+}
+
+void Delete()
+{
+    if(indexCutObj != -1 && objects.size() > 0)
+        objects.erase(objects.begin() + indexCutObj);
+    indexCutObj = -1;
+}
 //starting point
 void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
 {
+    mouseDown = true;
+
     if (selectButton)
         isPreview = false;
     else isPreview = true;
-    mouseDown = true;
-  
+    
     if (isPreview)
     {
         fromX = x;
         fromY = y;
     }
-    else if (selectButton)
+    else if (selectButton && !selected)
     {
-        for(int i=0; i< objects.size(); i++)
-        if (objects[i]->checkCollision(mouseX, mouseY))
-        {
-            selected = true;
+        for (int i = 0; i < objects.size(); i++)
+            if (objects[i]->checkCollision(mouseX, mouseY))
+            {
+                selectedPtr = (objects[i]).get();
+                indexCutObj = i;
+                if (selectedPtr != NULL)
+                {
+                    oldColor = selectedPtr->getcolor();
+                    oldStyle = selectedPtr->getStyle();
 
-            selectedPtr = (objects[i]).get();
+                    selectedPtr->setColor(RGB(0, 0, 0));
+                    selectedPtr->setStyle(1);
 
-            oldColor = selectedPtr->getcolor();
-            oldStyle = selectedPtr->getStyle();
-            selectedPtr->setColor(RGB(0, 0, 0));
-            selectedPtr->setStyle(1);
-        }
+                    selected = true;
+                }    
+            }
     }
 }
 
 //release mouse
 void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
 {
+    isMoving = false;
+    mouseDown = false;
     if (isPreview)
     {
         objects.push_back(obj);
         isPreview = false;
     }
-
-    mouseDown = false;
-    isMoving = false;
-    selected = false;
-
-    if (selectedPtr != NULL)
-    {
-        selectedPtr->setColor(oldColor);
-        selectedPtr->setStyle(oldStyle);
-        selectedPtr = NULL;
-    }
-          
     InvalidateRect(hwnd, &rc, FALSE);
 }
 
@@ -381,12 +453,12 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
         toY = y;
         InvalidateRect(hwnd, &rc, FALSE);
     }
-    else if (!isPreview && selected && mouseDown)
+    else if (isPreview  == false && selected && mouseDown)
     {
         oriFx = selectedPtr->getTo().x;
         oriFy = selectedPtr->getTo().y;
-
         isMoving = true;
+
         selectedPtr->Moving(mouseX, mouseY, oriFx, oriFy);
         InvalidateRect(hwnd, &rc, FALSE);
     }
@@ -400,7 +472,7 @@ void OnPaint(HWND hwnd)
     HBITMAP hbmMem, hbmOld;
     HPEN hPen;
     //HFONT hfntOld;
-
+    
     HDC hdc = BeginPaint(hwnd, &ps);
     // Create a compatible DC.
     hdcMem = CreateCompatibleDC(hdc);
@@ -416,12 +488,19 @@ void OnPaint(HWND hwnd)
     // Render the image into the offscreen DC.
     //SetBkMode(hdcMem, TRANSPARENT);
     hPen = CreatePen(PS_SOLID, 1, rgbCurrent);
-    SelectObject(hdcMem, hPen);
+    //SelectObject(hdcMem, hPen);
+
+    if (selectedPtr != NULL && !selectButton)
+    {
+        selectedPtr->setColor(oldColor);
+        selectedPtr->setStyle(oldStyle);
+        selectedPtr = NULL;
+    }
 
     obj->setColor(rgbCurrent);
     obj->setFrom(Point(fromX, fromY));
     obj->setTo(Point(toX, toY));
-    obj->setSize(1);
+    obj->setSize(1); //line width
     obj->setStyle(0); //solid = 0;
 
     for (int i = 0; i < objects.size(); i++)

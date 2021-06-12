@@ -13,8 +13,6 @@ using namespace std;
 
 enum TYPE {L = 1, R = 2, E = 3};
 
-
-
 class Point
 {
 public:
@@ -180,18 +178,18 @@ public:
 		int tx = getTo().x;
 		int ty = getTo().y;
 
-		int dx, dy;
+		float dx, dy;
 		int delta = 3;
 
 		int width = abs(fx - tx);
 		int height = abs(fy - ty);
 
-		dx = mouseX - fx;
-		dy = mouseY - fy;
+		dx = (float)mouseX - fx;
+		dy = (float)mouseY - fy;
 		float d1 = sqrt(dx * dx + dy * dy);
 
-		dx = mouseX - tx;
-		dy = mouseY - ty;
+		dx = (float)mouseX - tx;
+		dy = (float)mouseY - ty;
 		float d2 = sqrt(dx * dx + dy * dy);
 
 		dx = fx - tx;
@@ -333,9 +331,8 @@ public:
 		return false;
 	}
 
-	shared_ptr<Object> Clone()
+	 shared_ptr<Object> Clone()
 	{
-		//return new Ellipses(*this);
 		return make_shared<Ellipses>(*this);
 	}
 };

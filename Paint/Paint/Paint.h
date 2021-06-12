@@ -52,3 +52,5 @@ void OnPaint(HWND hwnd);
 void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags);
 void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags);
 void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags);
+void Copy();
+void Delete();
