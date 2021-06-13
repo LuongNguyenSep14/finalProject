@@ -12,6 +12,8 @@
 using namespace std;
 
 enum TYPE {L = 1, R = 2, E = 3};
+const int BUFFER_SIZE = 255;
+
 
 
 
@@ -169,6 +171,67 @@ public:
 	virtual shared_ptr<Object> nextObject()
 	{
 		shared_ptr<Object> result = make_shared<Ellipses>();
+
+		return result;
+	}
+};
+
+class Texts : public Object
+{
+private:
+	RECT textRect;
+	WCHAR buffer[BUFFER_SIZE];
+public:
+
+	Texts() : Object()
+	{
+		ID = ID_DRAW_TEXT;
+	}
+
+	void setRect(int fromX, int fromY, int toX, int toY)
+	{
+		if (toY < fromY) 
+		{
+			int temp = fromY;
+			fromY = toY;
+			toY = temp;
+		}
+
+		if (toX < fromX) 
+		{
+			int temp = fromX;
+			fromX = toX;
+			toX = temp;
+		}
+
+		textRect.left = fromX;
+		textRect.right = toX;
+		textRect.top = fromY;
+		textRect.bottom = toY;
+	}
+
+	WCHAR getData(HWND textBox)
+	{
+		//save data from edit box to buffer
+		return Edit_GetText(textBox, buffer, BUFFER_SIZE);
+	}
+
+	RECT getRect()
+	{
+		return textRect;
+	}
+	
+
+	virtual void draw(HDC& hdc)
+	{
+
+		HPEN hPen = CreatePen(PS_DASHDOT, 1, RGB(0, 0, 255));
+		Rectangle(hdc, textRect.left, textRect.top, textRect.right, textRect.left);
+	}
+
+	virtual shared_ptr<Object> nextObject()
+	{
+		shared_ptr<Object> result = make_shared<Texts>();
 
 		return result;
 	}

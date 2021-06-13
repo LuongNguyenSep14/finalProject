@@ -19,12 +19,27 @@ int oriFx;
 int oriFy;
 int oldColor;
 int oldStyle;
+bool isDrawingTextbox = false;
+
+HWND textBox;
 
 shared_ptr<Object> obj;
 vector<shared_ptr<Object>> objects;
 PAINTSTRUCT ps;
 
 int id_button = ID_DRAW_RECTANGLE;
+
+
+//Test
+Texts *textObj = new Texts();
+
+
+void UpdateGraph(HWND hwnd, HDC dc)
+{
+    RECT rc;
+    GetClientRect(hwnd, &rc);
+    DrawText(dc, L"Hello!", -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+}
 
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -211,6 +226,8 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     SendMessage(hToolBarWnd, TB_ADDBUTTONS, (WPARAM)sizeof(userButtons) / sizeof(TBBUTTON),
         (LPARAM)(LPTBBUTTON)&userButtons);
 
+
+
     return TRUE;
 }
 
@@ -281,6 +298,9 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         //Rect
         InvalidateRect(hwnd, NULL, FALSE );
         break;
+    case ID_DRAW_TEXT:
+        id_button = ID_DRAW_TEXT;
+        break;
     }
 }
 
@@ -296,22 +316,55 @@ void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
     isPreview = true;
     fromX = x;
     fromY = y;
+
     HDC hdc = GetDC(hwnd);
     MoveToEx(hdc, x, y, NULL);
-
-
 }
 
 //release mouse
 void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
 {
-    isDown = false;
-    isPreview = false;
-    // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
-    InvalidateRect(hwnd, NULL, TRUE);
+   // isDown = false;
+   // isPreview = false;
+   // // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
+   // InvalidateRect(hwnd, NULL, TRUE);
 
-   // obj->OnLButtonUp(hwnd, x, y, keyFlags);
-    objects.push_back(obj);
+   //// obj->OnLButtonUp(hwnd, x, y, keyFlags);
+   // objects.push_back(obj);
+
+    isPreview = false;
+
+    if (id_button == ID_DRAW_TEXT) 
+    {
+
+        textObj->setRect(fromX, fromY, toX, toY);
+        RECT rect = textObj->getRect();
+
+        //if (toY < fromY) {
+        //    int temp = fromY;
+        //    fromY = toY;
+        //    toY = temp;
+        //}
+
+        //if (toX < fromX) {
+        //    int temp = fromX;
+        //    fromX = toX;
+        //    toX = temp;
+        //}
+
+        
+
+        int width = abs(rect.left - rect.right);
+        int height = abs(rect.top - rect.bottom);
+
+        textBox = CreateWindowEx(
+            NULL, L"EDIT", L"",
+            WS_CHILD | WS_BORDER | WS_VISIBLE | ES_MULTILINE,
+            rect.left, rect.top, width, height, hwnd, (HMENU)0, NULL, NULL
+        );
+
+        Edit_SetText(textBox, L"Type something..");
+    }
 }
 
 //preview
@@ -328,28 +381,62 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 void OnPaint(HWND hwnd)
 {
     
-    obj = Factory::instance()->create(id_button);
-    HDC hdc = BeginPaint(hwnd, &ps);
-
-
-
-    HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
-
-    SelectObject(hdc, hPen);
-
-    obj->setColor(rgbCurrent);
-    obj->setFrom(Point(fromX, fromY));
-    obj->setTo(Point(toX, toY));
-    obj->draw(hdc);
-
-    for (int i = 0; i < objects.size(); i++)
+    if (id_button == ID_DRAW_TEXT)
     {
-        hPen = CreatePen(PS_DASHDOT, 3, objects[i]->getcolor());
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
+
+        textObj->draw(hdc);
+
+        EndPaint(hwnd, &ps);
+    }
+    else
+    {
+        obj = Factory::instance()->create(id_button);
+        HDC hdc = BeginPaint(hwnd, &ps);
+
+
+
+        HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
+
         SelectObject(hdc, hPen);
-        objects[i]->draw(hdc);
+
+        obj->setColor(rgbCurrent);
+        obj->setFrom(Point(fromX, fromY));
+        obj->setTo(Point(toX, toY));
+        obj->draw(hdc);
+
+        for (int i = 0; i < objects.size(); i++)
+        {
+            hPen = CreatePen(PS_DASHDOT, 3, objects[i]->getcolor());
+            SelectObject(hdc, hPen);
+            objects[i]->draw(hdc);
+        }
+
+        EndPaint(hwnd, &ps);
     }
 
-    EndPaint(hwnd, &ps);
+
+
+    //----------------------------text box-------------------------
+    //PAINTSTRUCT ps;
+    //HDC hdc = BeginPaint(hwnd, &ps);
+
+    //if (id_button == ID_DRAW_TEXT) 
+    //{
+
+    //    HPEN hPen = CreatePen(PS_DASHDOT, 1, RGB(0, 0, 255));
+    //    Rectangle(hdc, fromX, fromY, toX, toY);
+
+    //    textObj->draw(hdc);
+    //}
+
+
+
+    //EndPaint(hwnd, &ps);
+    //---------------------------------------------------------------
+
+
 }
 
 void saveToBinaryFile(string filePath) {
