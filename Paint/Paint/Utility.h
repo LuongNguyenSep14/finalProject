@@ -146,6 +146,9 @@ public:
 
 		this->setFrom(Point(fx, fy));
 		this->setTo(Point(tx, ty));
+
+		oriFx = fx + dfx;
+		oriFy = fy + dfy;
 	}
 };
 
