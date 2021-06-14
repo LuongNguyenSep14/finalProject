@@ -58,4 +58,4 @@ void openFileDialog(HWND hwnd);
 void saveFileDialog(HWND hwnd);
 void OnClose(HWND hwnd);
 void newFileDialog(HWND hwnd);
-void updateScreen();
+void updateScreen(HDC hdcMem);
