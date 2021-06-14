@@ -24,12 +24,14 @@ string currentFile = "";
 bool isNewed;
 bool isSaved;
 bool isLoaded;
+bool isDeleted;
 
 bool copyButton = false;
 
 shared_ptr<Object> cloneObjPtr = NULL;
 shared_ptr<Object> obj;
 vector<shared_ptr<Object>> objects;
+vector<shared_ptr<Object>> objBuffer;
 Object* selectedPtr = NULL;
 
 
@@ -290,6 +292,23 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     case ID_FILE_SAVE:
         saveFileDialog(hwnd);
         break;
+    case ID_REDO:
+        if (objects.size() > 0)
+        {
+            shared_ptr<Object> temp = objects.back();
+            objects.pop_back();
+            objBuffer.push_back(temp);
+        }
+        break;
+        
+    case ID_UNDO:
+        if (objBuffer.size() > 0)
+        {
+            shared_ptr<Object> temp = objBuffer.back();
+            objBuffer.pop_back();
+            objects.push_back(temp);
+        }
+        break;
     case ID_DRAW_ELLIPSE:
         selected = false;
         selectButton = false;
@@ -324,7 +343,7 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     case ID_EDIT_CUT:
         selectButton = false;
         Copy();
-        Delete();    
+        Delete();
         selected = false;
         InvalidateRect(hwnd, &rc, FALSE);
         break;
@@ -402,8 +421,11 @@ void Copy()
 
 void Delete()
 {
-    if(indexCutObj != -1 && objects.size() > 0)
+    if (indexCutObj != -1 && objects.size() > 0)
+    {
+        objBuffer.push_back(objects[indexCutObj]);
         objects.erase(objects.begin() + indexCutObj);
+    }
     indexCutObj = -1;
 }
 //starting point
@@ -480,7 +502,7 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 
         selectedPtr->Moving(mouseX, mouseY, oriFx, oriFy);
         
-        InvalidateRect(hwnd, r, FALSE);
+        InvalidateRect(hwnd, &rc, FALSE);
     }
 }
 
@@ -492,7 +514,7 @@ void OnPaint(HWND hwnd)
     HBITMAP hbmMem, hbmOld;
     HPEN hPen;
     //HFONT hfntOld;
-    
+
     HDC hdc = BeginPaint(hwnd, &ps);
     // Create a compatible DC.
     hdcMem = CreateCompatibleDC(hdc);
@@ -748,5 +770,16 @@ void newFileDialog(HWND hwnd)
     {
         isNewed = true;
         saveFileDialog(hwnd);
+    }
+}
+
+void updateScreen(HDC hdcMem)
+{
+    for (int i = 0; i < objects.size(); i++)
+    {
+        HPEN hNewPen = CreatePen(objects[i]->getStyle(), objects[i]->getSize(), objects[i]->getcolor());
+        SelectObject(hdcMem, hNewPen);
+        objects[i]->draw(hdcMem);
+        DeleteObject(hNewPen);
     }
 }
