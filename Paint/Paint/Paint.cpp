@@ -17,6 +17,8 @@ int mouseX = 0;
 int mouseY = 0;
 int oriFx;
 int oriFy;
+int olddx;
+int olddy;
 int indexCutObj = -1;
 DWORD oldColor;
 int oldStyle;
@@ -141,7 +143,67 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hWnd, WM_LBUTTONUP, OnLButtonUp);
         HANDLE_MSG(hWnd, WM_MOUSEMOVE, OnMouseMove);
         HANDLE_MSG(hWnd, WM_CLOSE, OnClose);
+        
+    case WM_NOTIFY:
+    switch (((LPNMHDR)lParam)->code)
+    {
+        case TTN_GETDISPINFO:
+        {
+            LPTOOLTIPTEXT lpttt = (LPTOOLTIPTEXT)lParam;
 
+            // Set the instance of the module that contains the resource.
+            lpttt->hinst = hInst;
+
+            UINT_PTR idButton = lpttt->hdr.idFrom;
+            switch (idButton)
+                {
+                case ID_DRAW_LINE:
+                    lpttt->lpszText = (LPWSTR)L"Draw Line";
+                    break;
+                case ID_DRAW_RECTANGLE:
+                    lpttt->lpszText = (LPWSTR)L"Draw Rectangle";
+                    break;
+                case ID_DRAW_ELLIPSE:
+                    lpttt->lpszText = (LPWSTR)L"Draw Ellipse";
+                    break;
+                case ID_DRAW_TEXT:
+                    lpttt->lpszText = (LPWSTR)L"Draw Text";
+                    break;
+                case ID_SELECT:
+                    lpttt->lpszText = (LPWSTR)L"Select";
+                    break;
+                case ID_REDO:
+                    lpttt->lpszText = (LPWSTR)L"Redo";
+                    break;
+                case ID_UNDO:
+                    lpttt->lpszText = (LPWSTR)L"Undo";
+                    break;
+                case ID_EDIT_CUT:
+                    lpttt->lpszText = (LPWSTR)L"Cut";
+                    break;
+                case ID_EDIT_COPY:
+                    lpttt->lpszText = (LPWSTR)L"Copy";
+                    break;
+                case ID_EDIT_PASTE:
+                    lpttt->lpszText = (LPWSTR)L"Paste";
+                    break;
+                case ID_EDIT_DELETE:
+                    lpttt->lpszText = (LPWSTR)L"Delete";
+                    break;
+                case ID_FILE_NEW:
+                    lpttt->lpszText = (LPWSTR)L"New file";
+                    break;
+                case ID_FILE_OPEN:
+                    lpttt->lpszText = (LPWSTR)L"Open file";
+                    break;
+                case ID_FILE_SAVE:
+                    lpttt->lpszText = (LPWSTR)L"Save file";
+                    break;
+                }
+           break;
+       }
+    }
+    return TRUE;
     case WM_ERASEBKGND:
         return 1;
     default:
@@ -462,7 +524,8 @@ void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
                     selectedPtr->setStyle(1);
 
                     selected = true;
-                }    
+                }  
+                break;
             }
     }
 }
@@ -500,13 +563,19 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
     }
     else if (isPreview  == false && selected && mouseDown)
     {
-        oriFx = selectedPtr->getTo().x;
-        oriFy = selectedPtr->getTo().y;
-        isMoving = true;
-
-        selectedPtr->Moving(mouseX, mouseY, oriFx, oriFy);
-        
-        InvalidateRect(hwnd, &rc, FALSE);
+        if (!isMoving)//start to move
+        { 
+            oriFx = mouseX;
+            oriFy = mouseY;
+            olddx = oriFx - selectedPtr->getFrom().x;
+            olddy = oriFy - selectedPtr->getFrom().y;
+            isMoving = true;
+        }
+        if (isMoving)
+        {
+            selectedPtr->Moving(mouseX, mouseY, oriFx, oriFy, olddx, olddy);
+            InvalidateRect(hwnd, &rc, FALSE);
+        }
     }
 }
 
