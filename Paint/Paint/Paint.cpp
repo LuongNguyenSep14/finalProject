@@ -20,6 +20,10 @@ int oriFy;
 int indexCutObj = -1;
 DWORD oldColor;
 int oldStyle;
+string currentFile = "";
+bool isNewed;
+bool isSaved;
+bool isLoaded;
 
 bool copyButton = false;
 
@@ -134,7 +138,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hWnd, WM_LBUTTONDOWN, OnLButtonDown);
         HANDLE_MSG(hWnd, WM_LBUTTONUP, OnLButtonUp);
         HANDLE_MSG(hWnd, WM_MOUSEMOVE, OnMouseMove);
+        HANDLE_MSG(hWnd, WM_CLOSE, OnClose);
 
+    case WM_ERASEBKGND:
+        return 1;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
@@ -236,13 +243,10 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 
     //Get RECT
     GetClientRect(hwnd, &rc);
+    //SetWindowPos(hToolBarWnd, NULL, 0, rc.bottom - 27, rc.right, 27, SWP_NOZORDER);
 
     return TRUE;
 }
-
-void openFileDialog(HWND hwnd);
-
-void saveFileDialog(HWND hwnd);
 
 void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -277,12 +281,11 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             rgbPrev = SetTextColor(hdc, rgbCurrent);
         }
         break;
-
     case ID_FILE_OPEN:
         openFileDialog(hwnd);
         break;
     case ID_FILE_NEW:
-        MessageBox( 0, 0, 0, 0 );
+        newFileDialog(hwnd);
         break;
     case ID_FILE_SAVE:
         saveFileDialog(hwnd);
@@ -337,7 +340,7 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         {
             int width = abs(cloneObjPtr->getFrom().x - cloneObjPtr->getTo().x);
             int height = abs(cloneObjPtr->getFrom().y - cloneObjPtr->getTo().y);
-            cloneObjPtr->setFrom(Point(5,30));
+            cloneObjPtr->setFrom(Point(5, 30));
             cloneObjPtr->setTo(Point(width + 5, height + 30));
             cloneObjPtr->setColor(oldColor);
             cloneObjPtr->setStyle(oldStyle);
@@ -365,6 +368,20 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         }
         break;
     } 
+}
+
+void OnClose(HWND hwnd)
+{
+    if (objects.size() == 0)
+    {
+        DestroyWindow(hwnd);
+    }
+    int result = MessageBox(hwnd, L"Do you want to save?", L"My Paint", MB_OKCANCEL | MB_ICONQUESTION);
+    if (result == IDOK)
+    {
+        saveFileDialog(hwnd);
+    }
+    DestroyWindow(hwnd);
 }
 
 void OnDestroy(HWND hwnd)
@@ -446,12 +463,14 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
     WCHAR text[30];
     wsprintf(text, L"%d, %dpx", mouseX, mouseY);
     SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 0, (LPARAM)text);
+    RECT* r = obj->getDimens();
 
     if (isPreview)
     {
         toX = x;
         toY = y;
-        InvalidateRect(hwnd, &rc, FALSE);
+        
+        InvalidateRect(hwnd, r, FALSE);
     }
     else if (isPreview  == false && selected && mouseDown)
     {
@@ -460,7 +479,8 @@ void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
         isMoving = true;
 
         selectedPtr->Moving(mouseX, mouseY, oriFx, oriFy);
-        InvalidateRect(hwnd, &rc, FALSE);
+        
+        InvalidateRect(hwnd, r, FALSE);
     }
 }
 
@@ -513,7 +533,7 @@ void OnPaint(HWND hwnd)
   
     SelectObject(hdcMem, hPen);
     if (isPreview)
-        obj->draw(hdcMem);   
+        obj->draw(hdcMem);
 
     // Blt the changes to the screen DC.
     BitBlt(hdc, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, hdcMem, 0, 0, SRCCOPY);
@@ -536,6 +556,7 @@ void saveToBinaryFile(string filePath)
 
     if (out.is_open()) 
     {
+        isSaved = true;
         int size = objects.size();
         out.write(reinterpret_cast<const char*>(&size), sizeof(size));
 
@@ -555,6 +576,7 @@ void saveToBinaryFile(string filePath)
     }
     else 
     {
+        isSaved = false;
         OutputDebugString(L"Can't open data.bin to write");
     }
 
@@ -565,7 +587,9 @@ void loadFromBinaryFile(string filePath) {
     ifstream in;
     in.open(filePath, ios::in | ios::binary);
 
-    if (in.is_open()) {
+    if (in.is_open()) 
+    {
+        isLoaded = true;
         char* buffer = new char[MAX_BUFF];
         int size;
         in.read(buffer, sizeof(size));
@@ -622,8 +646,9 @@ void loadFromBinaryFile(string filePath) {
 
         delete[] buffer;
     }
-    else {
-
+    else
+    {
+        isLoaded = false;
         OutputDebugString(L"Can't open data.bin to read");
     }
 
@@ -653,6 +678,7 @@ void openFileDialog(HWND hwnd)
         wstring ws(szFilePath);
         // your new String
         string fileName(ws.begin(), ws.end());
+        currentFile = fileName;
         loadFromBinaryFile(fileName);
         InvalidateRect(hwnd, NULL, TRUE);
     }
@@ -679,7 +705,48 @@ void saveFileDialog(HWND hwnd)
         wstring ws(szFileName);
         // your new String
         string fileName(ws.begin(), ws.end());
-
+        /*if (isLoaded || isSaved || isNewed)
+        {
+            saveToBinaryFile(currentFile);
+        }
+        else
+        {
+            currentFile = fileName;
+            saveToBinaryFile(fileName);
+        }*/
+        currentFile = fileName;
         saveToBinaryFile(fileName);
+    }
+}
+
+void newFileDialog(HWND hwnd)
+{
+    if (objects.size() != 0)
+    {
+        int result = MessageBox(hwnd, L"Do you want to save?", L"My Paint", MB_OKCANCEL | MB_ICONQUESTION);
+        if (result == IDOK)
+        {
+            isNewed = true;
+            saveFileDialog(hwnd);
+            objects.clear();
+            saveFileDialog(hwnd);
+            InvalidateRect(hwnd, NULL, FALSE);
+            BeginPaint(hwnd, &ps);
+            EndPaint(hwnd, &ps);
+        }
+        if (result == IDCANCEL)
+        {
+            isNewed = true;
+            objects.clear();
+            saveFileDialog(hwnd);
+            InvalidateRect(hwnd, NULL, FALSE);
+            BeginPaint(hwnd, &ps);
+            EndPaint(hwnd, &ps);
+        }
+    }
+    else
+    {
+        isNewed = true;
+        saveFileDialog(hwnd);
     }
 }

@@ -54,3 +54,7 @@ void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags);
 void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags);
 void Copy();
 void Delete();
+void openFileDialog(HWND hwnd);
+void saveFileDialog(HWND hwnd);
+void OnClose(HWND hwnd);
+void newFileDialog(HWND hwnd);
