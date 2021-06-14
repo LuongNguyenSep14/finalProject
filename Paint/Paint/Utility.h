@@ -127,7 +127,7 @@ public:
 	virtual bool checkCollision(int mouseX, int mouseY) = 0;
 	virtual shared_ptr<Object> Clone() = 0;
 
-	void Moving(int mouseX, int mouseY, int oriFx, int oriFy)
+	void Moving(int mouseX, int mouseY, int &oriFx, int &oriFy, const int& dfx, const int& dfy)
 	{
 		int dx, dy, fx, fy, tx, ty;
 
