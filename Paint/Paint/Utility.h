@@ -12,10 +12,6 @@
 using namespace std;
 
 enum TYPE {L = 1, R = 2, E = 3};
-const int BUFFER_SIZE = 255;
-
-
-
 
 class Point
 {
@@ -41,15 +37,20 @@ public:
 class Object
 {
 protected:
-	int ID;
+	int ID, style;
 	Point from, to;
 	DWORD color;
+	int size; //line width = độ dày nét vẽ
+	bool isDeleted;
 
 public:
 	Object()
 	{
 		ID = 0;
 		color = RGB(0, 0, 0);
+		style = 0;
+		size = 1;
+		isDeleted = false;
 	}
 
 	Point getFrom()
@@ -72,9 +73,29 @@ public:
 		return color;
 	}
 
+	int getSize()
+	{
+		return size;
+	}
+
+	int getStyle()
+	{
+		return style;
+	}
+
 	void setColor(DWORD color)
 	{
 		this->color = color;
+	}
+
+	void setSize(int size)
+	{
+		this->size = size;
+	}
+
+	void setStyle(int style)
+	{
+		this->style = style;
 	}
 
 	virtual void setFrom(Point from)
@@ -105,7 +126,42 @@ public:
 
 	virtual void draw(HDC& hdc) = 0;
 	virtual shared_ptr<Object> nextObject() = 0;
+	virtual bool checkCollision(int mouseX, int mouseY) = 0;
+	virtual shared_ptr<Object> Clone() = 0;
 
+	void Moving(int mouseX, int mouseY, int &oriFx, int &oriFy, const int& dfx, const int& dfy)
+	{
+		int dx, dy, fx, fy, tx, ty;
+
+		fx = this->getFrom().x;
+		fy = this->getFrom().y;
+		tx = this->getTo().x;
+		ty = this->getTo().y;
+
+		dx = mouseX - oriFx;
+		dy = mouseY - oriFy;
+
+		fx += dx;
+		fy += dy;
+		tx += dx;
+		ty += dy;
+
+		this->setFrom(Point(fx, fy));
+		this->setTo(Point(tx, ty));
+
+		oriFx = fx + dfx;
+		oriFy = fy + dfy;
+	}
+
+	virtual bool getStatus()
+	{
+		return isDeleted;
+	}
+
+	virtual void setStatus(bool status)
+	{
+		isDeleted = status;
+	}
 };
 
 class Line : public Object
@@ -118,10 +174,7 @@ public:
 	}
 
 	virtual void draw(HDC& hdc)
-	{
-		HPEN hPen = CreatePen(PS_DASHDOT, 3, this->color);
-		SelectObject(hdc, hPen);
-		
+	{	
 		MoveToEx(hdc, getFrom().x, getFrom().y, NULL);
 		LineTo(hdc, getTo().x, getTo().y);
 	}
@@ -131,6 +184,42 @@ public:
 		shared_ptr<Object> result = make_shared<Line>();
 
 		return result;
+	}
+
+	bool checkCollision(int mouseX, int mouseY)
+	{
+		int fx = getFrom().x;
+		int fy = getFrom().y;
+		int tx = getTo().x;
+		int ty = getTo().y;
+
+		float dx, dy;
+		int delta = 3;
+
+		int width = abs(fx - tx);
+		int height = abs(fy - ty);
+
+		dx = (float)mouseX - fx;
+		dy = (float)mouseY - fy;
+		float d1 = sqrt(dx * dx + dy * dy);
+
+		dx = (float)mouseX - tx;
+		dy = (float)mouseY - ty;
+		float d2 = sqrt(dx * dx + dy * dy);
+
+		dx = fx - tx;
+		dy = fy - ty;
+		float dist = sqrt(dx * dx + dy * dy);
+
+		if (d1 + d2 >= dist - delta && d1 + d2 <= dist + delta)
+			return true;
+
+		return false;
+	}
+
+	shared_ptr<Object> Clone()
+	{
+		return make_shared<Line>(*this);
 	}
 };
 
@@ -153,6 +242,45 @@ public:
 
 		return result;
 	}
+
+	bool checkCollision(int mouseX, int mouseY)
+	{
+		int fx = getFrom().x;
+		int fy = getFrom().y;
+		int tx = getTo().x;
+		int ty = getTo().y;
+
+		int width = abs(fx - tx);
+		int height = abs(fy - ty);
+		int delta = 3;
+
+		if (fx < tx && fy > ty)
+		{
+			fy -= height;
+			ty += height;
+		}
+		else if (fx > tx && fy < ty)
+		{
+			fx -= width;
+			tx += width;
+		}
+		else if (fx > tx && fy > ty)
+		{
+			swap(fx, tx);
+			swap(fy, ty);
+		}
+
+		if (((mouseX >= fx - delta && mouseX <= fx + delta) || (mouseX <= tx + delta && mouseX >= tx - delta)) && mouseY >= fy && mouseY <= ty)
+			return true;
+		if (mouseX >= fx && mouseX <= tx && ((mouseY >= fy - delta && mouseY <= fy + delta) || (mouseY <= ty + delta && mouseY >= ty - delta)))
+			return true;
+		return false;
+	}
+
+	shared_ptr<Object> Clone()
+	{
+		return make_shared<Rect>(*this);
+	}
 };
 
 class Ellipses : public Object
@@ -174,66 +302,53 @@ public:
 
 		return result;
 	}
-};
 
-class Texts : public Object
-{
-private:
-	RECT textRect;
-	WCHAR buffer[BUFFER_SIZE];
-public:
-
-	Texts() : Object()
+	bool checkCollision(int mouseX, int mouseY)
 	{
-		ID = ID_DRAW_TEXT;
-	}
+		float fx = getFrom().x;
+		float fy = getFrom().y;
+		float tx = getTo().x;
+		float ty = getTo().y;
 
-	void setRect(int fromX, int fromY, int toX, int toY)
-	{
-		if (toY < fromY) 
+		int width = abs(fx - tx);
+		int height = abs(fy - ty);
+
+		if (fx < tx && fy > ty)
 		{
-			int temp = fromY;
-			fromY = toY;
-			toY = temp;
+			fy -= height;
+			ty += height;
+		}
+		else if (fx > tx && fy < ty)
+		{
+			fx -= width;
+			tx += width;
+		}
+		else if (fx > tx && fy > ty)
+		{
+			swap(fx, tx);
+			swap(fy, ty);
 		}
 
-		if (toX < fromX) 
+		float a = (fx - tx) / 2.0;
+		float b = (fy - ty) / 2.0;
+
+		float h = (fx + tx) / 2.0;
+		float k = (fy + ty) / 2.0;
+
+		float result = pow(mouseX - h, 2) / pow(a, 2) + pow(mouseY - k, 2) / pow(b, 2);
+		float delta = 0.1;
+
+		if (result <= 1 + delta && result >= 1 - delta)
 		{
-			int temp = fromX;
-			fromX = toX;
-			toX = temp;
+			return true;
 		}
 
-		textRect.left = fromX;
-		textRect.right = toX;
-		textRect.top = fromY;
-		textRect.bottom = toY;
+		return false;
 	}
 
-	WCHAR getData(HWND textBox)
+	 shared_ptr<Object> Clone()
 	{
-		//save data from edit box to buffer
-		return Edit_GetText(textBox, buffer, BUFFER_SIZE);
-	}
-
-	RECT getRect()
-	{
-		return textRect;
-	}
-	
-
-	virtual void draw(HDC& hdc)
-	{
-
-		HPEN hPen = CreatePen(PS_DASHDOT, 1, RGB(0, 0, 255));
-		Rectangle(hdc, textRect.left, textRect.top, textRect.right, textRect.left);
-	}
-
-	virtual shared_ptr<Object> nextObject()
-	{
-		shared_ptr<Object> result = make_shared<Texts>();
-
-		return result;
+		return make_shared<Ellipses>(*this);
 	}
 };
 

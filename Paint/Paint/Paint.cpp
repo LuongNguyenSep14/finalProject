@@ -17,29 +17,31 @@ int mouseX = 0;
 int mouseY = 0;
 int oriFx;
 int oriFy;
-int oldColor;
+int olddx;
+int olddy;
+int indexCutObj = -1;
+DWORD oldColor;
 int oldStyle;
-bool isDrawingTextbox = false;
+string currentFile = "";
+bool isNewed;
+bool isSaved;
+bool isLoaded;
+bool isDeleted;
 
-HWND textBox;
+bool copyButton = false;
 
+shared_ptr<Object> cloneObjPtr = NULL;
 shared_ptr<Object> obj;
 vector<shared_ptr<Object>> objects;
+vector<shared_ptr<Object>> objBuffer;
+Object* selectedPtr = NULL;
+
+
 PAINTSTRUCT ps;
+POINT p;
+RECT rc;
 
 int id_button = ID_DRAW_RECTANGLE;
-
-
-//Test
-Texts *textObj = new Texts();
-
-
-void UpdateGraph(HWND hwnd, HDC dc)
-{
-    RECT rc;
-    GetClientRect(hwnd, &rc);
-    DrawText(dc, L"Hello!", -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-}
 
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -140,7 +142,70 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hWnd, WM_LBUTTONDOWN, OnLButtonDown);
         HANDLE_MSG(hWnd, WM_LBUTTONUP, OnLButtonUp);
         HANDLE_MSG(hWnd, WM_MOUSEMOVE, OnMouseMove);
+        HANDLE_MSG(hWnd, WM_CLOSE, OnClose);
+        
+    case WM_NOTIFY:
+    switch (((LPNMHDR)lParam)->code)
+    {
+        case TTN_GETDISPINFO:
+        {
+            LPTOOLTIPTEXT lpttt = (LPTOOLTIPTEXT)lParam;
 
+            // Set the instance of the module that contains the resource.
+            lpttt->hinst = hInst;
+
+            UINT_PTR idButton = lpttt->hdr.idFrom;
+            switch (idButton)
+                {
+                case ID_DRAW_LINE:
+                    lpttt->lpszText = (LPWSTR)L"Draw Line";
+                    break;
+                case ID_DRAW_RECTANGLE:
+                    lpttt->lpszText = (LPWSTR)L"Draw Rectangle";
+                    break;
+                case ID_DRAW_ELLIPSE:
+                    lpttt->lpszText = (LPWSTR)L"Draw Ellipse";
+                    break;
+                case ID_DRAW_TEXT:
+                    lpttt->lpszText = (LPWSTR)L"Draw Text";
+                    break;
+                case ID_SELECT:
+                    lpttt->lpszText = (LPWSTR)L"Select";
+                    break;
+                case ID_REDO:
+                    lpttt->lpszText = (LPWSTR)L"Redo";
+                    break;
+                case ID_UNDO:
+                    lpttt->lpszText = (LPWSTR)L"Undo";
+                    break;
+                case ID_EDIT_CUT:
+                    lpttt->lpszText = (LPWSTR)L"Cut";
+                    break;
+                case ID_EDIT_COPY:
+                    lpttt->lpszText = (LPWSTR)L"Copy";
+                    break;
+                case ID_EDIT_PASTE:
+                    lpttt->lpszText = (LPWSTR)L"Paste";
+                    break;
+                case ID_EDIT_DELETE:
+                    lpttt->lpszText = (LPWSTR)L"Delete";
+                    break;
+                case ID_FILE_NEW:
+                    lpttt->lpszText = (LPWSTR)L"New file";
+                    break;
+                case ID_FILE_OPEN:
+                    lpttt->lpszText = (LPWSTR)L"Open file";
+                    break;
+                case ID_FILE_SAVE:
+                    lpttt->lpszText = (LPWSTR)L"Save file";
+                    break;
+                }
+           break;
+       }
+    }
+    return TRUE;
+    case WM_ERASEBKGND:
+        return 1;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
@@ -210,9 +275,12 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
         { 0, ID_DRAW_ELLIPSE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 1, ID_DRAW_RECTANGLE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 2, ID_DRAW_LINE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
-        { 3, ID_DRAW_TEXT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
+        { 3, ID_DRAW_TEXT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
+        { 4, ID_SELECT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
+        { 5, ID_REDO,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
+        { 6, ID_UNDO,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
     };
-    TBADDBITMAP	tbBitmap = { hInst, IDB_BITMAP1 };
+    TBADDBITMAP	tbBitmap = { hInst, IDB_BITMAP2 };
     
     int idx = SendMessage(hToolBarWnd, TB_ADDBITMAP, (WPARAM)sizeof(tbBitmap) / sizeof(TBADDBITMAP),
         (LPARAM)(LPTBADDBITMAP)&tbBitmap);
@@ -221,19 +289,28 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     userButtons[2].iBitmap += idx;
     userButtons[3].iBitmap += idx;
     userButtons[4].iBitmap += idx;
+    userButtons[5].iBitmap += idx;
+    userButtons[6].iBitmap += idx;
+    userButtons[7].iBitmap += idx;
+
     //how to define the button ?
     // Thêm nút bấm vào toolbar
     SendMessage(hToolBarWnd, TB_ADDBUTTONS, (WPARAM)sizeof(userButtons) / sizeof(TBBUTTON),
         (LPARAM)(LPTBBUTTON)&userButtons);
 
+    //STATUS BAR                               
+    HWND StatusBar = CreateWindowEx(0,STATUSCLASSNAME,(PCTSTR)NULL,SBARS_SIZEGRIP |WS_CHILD | WS_VISIBLE,0, 0, 0, 0,
+        hwnd, (HMENU)IDC_STATUSBAR, hInst,NULL);
 
+    int StatusSize[] = { 100, 200 , -1 };
+    SendMessage(StatusBar, SB_SETPARTS, 3, (LPARAM)&StatusSize);
+
+    //Get RECT
+    GetClientRect(hwnd, &rc);
+    //SetWindowPos(hToolBarWnd, NULL, 0, rc.bottom - 27, rc.right, 27, SWP_NOZORDER);
 
     return TRUE;
 }
-
-void openFileDialog(HWND hwnd);
-
-void saveFileDialog(HWND hwnd);
 
 void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -268,40 +345,141 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             rgbPrev = SetTextColor(hdc, rgbCurrent);
         }
         break;
-
     case ID_FILE_OPEN:
-        //MessageBox( 0, 0, 0, 0 );
         openFileDialog(hwnd);
         break;
     case ID_FILE_NEW:
-        MessageBox( 0, 0, 0, 0 );
+        newFileDialog(hwnd);
         break;
     case ID_FILE_SAVE:
         saveFileDialog(hwnd);
-        //MessageBox( 0, 0, 0, 0 );
         break;
-    case ID_DRAW_ELLIPSE:
-
-        id_button = ID_DRAW_ELLIPSE;
+    case ID_REDO:
+        /*if (objects.size() > 0)
+        {
+            shared_ptr<Object> temp = objects.back();
+            objects.pop_back();
+            objBuffer.push_back(temp);
+        }*/
+        if (objBuffer.size() > 0)
+        {
+            shared_ptr<Object> temp = objBuffer.back();
+            objBuffer.pop_back();
+            objects.push_back(temp);
+        }
+        InvalidateRect(hwnd, &rc, FALSE);
         
         break;
+        
+    case ID_UNDO:
+        if (objBuffer.size() > 0 && objBuffer.back()->getStatus() == true)
+        {
+            shared_ptr<Object> temp = objBuffer.back();
+            objBuffer.pop_back();
+            temp->setStatus(false);
+            objects.push_back(temp);
+        }
+        else if (objects.size() > 0 && !objects.back()->getStatus())
+        {
+            shared_ptr<Object> temp = objects.back();
+            objects.pop_back();
+            objBuffer.push_back(temp);
+        }
+        InvalidateRect(hwnd, &rc, FALSE);
+   
+        break;
+    case ID_DRAW_ELLIPSE:
+        selected = false;
+        selectButton = false;
+        id_button = ID_DRAW_ELLIPSE;
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Ellipse");      
+        break;
     case ID_DRAW_LINE:
-
+        selectButton = false;
+        selected = false;
         id_button = ID_DRAW_LINE;
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Line");
         break;
     case ID_DRAW_RECTANGLE:
+        selectButton = false;
+        selected = false;
         id_button = ID_DRAW_RECTANGLE;
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Rectangle");
         break;
-
     case ID_EDIT_DELETE:
-        //quick debug
-        //Rect
-        InvalidateRect(hwnd, NULL, FALSE );
+        if (selected)
+        {
+            Delete();
+            selected = false;
+            selectButton = false;
+            InvalidateRect(hwnd, &rc, FALSE);
+        }      
         break;
-    case ID_DRAW_TEXT:
-        id_button = ID_DRAW_TEXT;
+    case ID_SELECT:
+        selectButton = true;
+        SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)L"Select");
         break;
+    case ID_EDIT_CUT:
+        selectButton = false;
+        Copy();
+        Delete();
+        selected = false;
+        InvalidateRect(hwnd, &rc, FALSE);
+        break;
+    case ID_EDIT_COPY:
+        selectButton = false;
+        Copy();
+        if(cloneObjPtr != NULL)
+            SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"Copied");
+        selected = false;
+        break;
+    case ID_EDIT_PASTE: 
+        if (cloneObjPtr != NULL)
+        {
+            int width = abs(cloneObjPtr->getFrom().x - cloneObjPtr->getTo().x);
+            int height = abs(cloneObjPtr->getFrom().y - cloneObjPtr->getTo().y);
+            cloneObjPtr->setFrom(Point(5, 30));
+            cloneObjPtr->setTo(Point(width + 5, height + 30));
+            cloneObjPtr->setColor(oldColor);
+            cloneObjPtr->setStyle(oldStyle);
+
+            objects.push_back(cloneObjPtr->Clone());
+            SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"");
+
+            //SMALL DETAIL
+            int IDtemp = objects.back()->getID();
+            wstring ttext;
+
+            if (IDtemp == ID_DRAW_LINE)
+                ttext = L"Line";
+            else if (IDtemp == ID_DRAW_RECTANGLE)
+                ttext = L"Rectangle";
+            else if (IDtemp == ID_DRAW_ELLIPSE)
+                ttext = L"Ellipse";
+            SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 1, (LPARAM)ttext.c_str());
+            //
+
+            cloneObjPtr.reset();
+            cloneObjPtr = NULL;
+
+            InvalidateRect(hwnd, &rc, FALSE);
+        }
+        break;
+    } 
+}
+
+void OnClose(HWND hwnd)
+{
+    if (objects.size() == 0)
+    {
+        DestroyWindow(hwnd);
     }
+    int result = MessageBox(hwnd, L"Do you want to save?", L"My Paint", MB_OKCANCEL | MB_ICONQUESTION);
+    if (result == IDOK)
+    {
+        saveFileDialog(hwnd);
+    }
+    DestroyWindow(hwnd);
 }
 
 void OnDestroy(HWND hwnd)
@@ -309,154 +487,206 @@ void OnDestroy(HWND hwnd)
     PostQuitMessage(0);
 }
 
+void Copy()
+{
+    if (selectedPtr != NULL && selected)
+    {
+        if (cloneObjPtr != NULL)
+            cloneObjPtr.reset();
+
+        cloneObjPtr = selectedPtr->Clone();
+    }
+}
+
+void Delete()
+{
+    if (indexCutObj != -1 && objects.size() > 0)
+    {
+        objects[indexCutObj]->setStatus(true);
+        objBuffer.push_back(objects[indexCutObj]);
+        objects.erase(objects.begin() + indexCutObj);
+    }
+    indexCutObj = -1;
+}
 //starting point
 void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
 {
-    isDown = true;
-    isPreview = true;
-    fromX = x;
-    fromY = y;
+    mouseDown = true;
 
-    HDC hdc = GetDC(hwnd);
-    MoveToEx(hdc, x, y, NULL);
+    if (selectButton)
+        isPreview = false;
+    else isPreview = true;
+    
+    if (isPreview)
+    {
+        fromX = x;
+        fromY = y;
+    }
+    else if (selectButton && !selected)
+    {
+        for (int i = 0; i < objects.size(); i++)
+            if (objects[i]->checkCollision(mouseX, mouseY))
+            {
+                selectedPtr = (objects[i]).get();
+                indexCutObj = i;
+                if (selectedPtr != NULL)
+                {
+                    oldColor = selectedPtr->getcolor();
+                    oldStyle = selectedPtr->getStyle();
+
+                    selectedPtr->setColor(RGB(0, 0, 0));
+                    selectedPtr->setStyle(1);
+
+                    selected = true;
+                }  
+                break;
+            }
+    }
 }
 
 //release mouse
 void OnLButtonUp(HWND hwnd, int x, int y, UINT keyFlags)
 {
-   // isDown = false;
-   // isPreview = false;
-   // // Báo hiệu cần xóa đi toàn bộ màn hình & vẽ lại
-   // InvalidateRect(hwnd, NULL, TRUE);
-
-   //// obj->OnLButtonUp(hwnd, x, y, keyFlags);
-   // objects.push_back(obj);
-
-    isPreview = false;
-
-    if (id_button == ID_DRAW_TEXT) 
+    isMoving = false;
+    mouseDown = false;
+    if (isPreview)
     {
-
-        textObj->setRect(fromX, fromY, toX, toY);
-        RECT rect = textObj->getRect();
-
-        //if (toY < fromY) {
-        //    int temp = fromY;
-        //    fromY = toY;
-        //    toY = temp;
-        //}
-
-        //if (toX < fromX) {
-        //    int temp = fromX;
-        //    fromX = toX;
-        //    toX = temp;
-        //}
-
-        
-
-        int width = abs(rect.left - rect.right);
-        int height = abs(rect.top - rect.bottom);
-
-        textBox = CreateWindowEx(
-            NULL, L"EDIT", L"",
-            WS_CHILD | WS_BORDER | WS_VISIBLE | ES_MULTILINE,
-            rect.left, rect.top, width, height, hwnd, (HMENU)0, NULL, NULL
-        );
-
-        Edit_SetText(textBox, L"Type something..");
+        objects.push_back(obj);
+        isPreview = false;
     }
+    InvalidateRect(hwnd, &rc, FALSE);
 }
 
 //preview
 void OnMouseMove(HWND hwnd, int x, int y, UINT keyFlags)
 {
-    if (isPreview) 
+    mouseX = x;
+    mouseY = y;
+
+    WCHAR text[30];
+    wsprintf(text, L"%d, %dpx", mouseX, mouseY);
+    SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 0, (LPARAM)text);
+    RECT* r = obj->getDimens();
+
+    if (isPreview)
     {
         toX = x;
         toY = y;
-        InvalidateRect(hwnd, NULL, TRUE);
+        
+        InvalidateRect(hwnd, r, FALSE);
+    }
+    else if (isPreview  == false && selected && mouseDown)
+    {
+        if (!isMoving)//start to move
+        { 
+            oriFx = mouseX;
+            oriFy = mouseY;
+            olddx = oriFx - selectedPtr->getFrom().x;
+            olddy = oriFy - selectedPtr->getFrom().y;
+            isMoving = true;
+        }
+        if (isMoving)
+        {
+            selectedPtr->Moving(mouseX, mouseY, oriFx, oriFy, olddx, olddy);
+            InvalidateRect(hwnd, &rc, FALSE);
+        }
     }
 }
+
 
 void OnPaint(HWND hwnd)
 {
+    obj = Factory::instance()->create(id_button);
+    HDC hdcMem;
+    HBITMAP hbmMem, hbmOld;
+    HPEN hPen;
+    //HFONT hfntOld;
+
+    HDC hdc = BeginPaint(hwnd, &ps);
+    // Create a compatible DC.
+    hdcMem = CreateCompatibleDC(hdc);
+    // Create a bitmap big enough for our client rectangle.
+    hbmMem = CreateCompatibleBitmap(hdc, rc.right - rc.left, rc.bottom - rc.top);
+    // Select the bitmap into the off-screen DC.
+    hbmOld = (HBITMAP)SelectObject(hdcMem, hbmMem);
+    // Erase the background.
+    FillRect(hdcMem, &rc, HBRUSH(RGB(255, 255, 255)));
     
-    if (id_button == ID_DRAW_TEXT)
+    //if (hfnt) {hfntOld = SelectObject(hdcMem, hfnt);};
+
+    // Render the image into the offscreen DC.
+    //SetBkMode(hdcMem, TRANSPARENT);
+    hPen = CreatePen(PS_SOLID, 1, rgbCurrent);
+    //SelectObject(hdcMem, hPen);
+
+    if (selectedPtr != NULL && !selectButton)
     {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-
-        textObj->draw(hdc);
-
-        EndPaint(hwnd, &ps);
-    }
-    else
-    {
-        obj = Factory::instance()->create(id_button);
-        HDC hdc = BeginPaint(hwnd, &ps);
-
-
-
-        HPEN hPen = CreatePen(PS_DASHDOT, 3, rgbCurrent);
-
-        SelectObject(hdc, hPen);
-
-        obj->setColor(rgbCurrent);
-        obj->setFrom(Point(fromX, fromY));
-        obj->setTo(Point(toX, toY));
-        obj->draw(hdc);
-
-        for (int i = 0; i < objects.size(); i++)
-        {
-            hPen = CreatePen(PS_DASHDOT, 3, objects[i]->getcolor());
-            SelectObject(hdc, hPen);
-            objects[i]->draw(hdc);
-        }
-
-        EndPaint(hwnd, &ps);
+        selectedPtr->setColor(oldColor);
+        selectedPtr->setStyle(oldStyle);
+        selectedPtr = NULL;
     }
 
+    obj->setColor(rgbCurrent);
+    obj->setFrom(Point(fromX, fromY));
+    obj->setTo(Point(toX, toY));
+    obj->setSize(1); //line width
+    obj->setStyle(0); //solid = 0;
 
+    /*for (int i = 0; i < objects.size(); i++)
+    {
+       HPEN hNewPen = CreatePen(objects[i]->getStyle(), objects[i]->getSize(), objects[i]->getcolor());
+       SelectObject(hdcMem, hNewPen);
+       objects[i]->draw(hdcMem);
+       DeleteObject(hNewPen);
+    }*/
+    updateScreen(hdcMem);
+  
+    SelectObject(hdcMem, hPen);
+    if (isPreview)
+        obj->draw(hdcMem);
 
-    //----------------------------text box-------------------------
-    //PAINTSTRUCT ps;
-    //HDC hdc = BeginPaint(hwnd, &ps);
+    // Blt the changes to the screen DC.
+    BitBlt(hdc, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, hdcMem, 0, 0, SRCCOPY);
 
-    //if (id_button == ID_DRAW_TEXT) 
-    //{
+    // Done with off-screen bitmap and DC.
+    //SwapBuffers(hdc);
+    SelectObject(hdcMem, hbmOld);
+    DeleteObject(hbmMem);
+    DeleteDC(hdcMem);
+    DeleteObject(hPen);
+    ReleaseDC(hwnd, hdc);
 
-    //    HPEN hPen = CreatePen(PS_DASHDOT, 1, RGB(0, 0, 255));
-    //    Rectangle(hdc, fromX, fromY, toX, toY);
-
-    //    textObj->draw(hdc);
-    //}
-
-
-
-    //EndPaint(hwnd, &ps);
-    //---------------------------------------------------------------
-
-
+    EndPaint(hwnd, &ps);
 }
 
-void saveToBinaryFile(string filePath) {
+void saveToBinaryFile(string filePath) 
+{
     std::ofstream out;
     out.open(filePath, std::iostream::out | std::iostream::binary | std::iostream::trunc);
 
-    if (out.is_open()) {
+    if (out.is_open()) 
+    {
+        isSaved = true;
         int size = objects.size();
         out.write(reinterpret_cast<const char*>(&size), sizeof(size));
 
-        for (shared_ptr<Object> shape : objects) {
+        for (shared_ptr<Object> shape : objects) 
+        {
             int id = shape->getID();
             COLORREF color = shape->getcolor();
             RECT* rect = shape->getDimens();
+            int style = shape->getStyle();
+            int size = shape->getSize();
             out.write(reinterpret_cast<const char*>(&id), sizeof(id));
             out.write(reinterpret_cast<const char*>(&color), sizeof(COLORREF));
             out.write(reinterpret_cast<const char*>(rect), sizeof(RECT));
+            out.write(reinterpret_cast<const char*>(&style), sizeof(style));
+            out.write(reinterpret_cast<const char*>(&size), sizeof(size));
         }
     }
-    else {
+    else 
+    {
+        isSaved = false;
         OutputDebugString(L"Can't open data.bin to write");
     }
 
@@ -467,7 +697,9 @@ void loadFromBinaryFile(string filePath) {
     ifstream in;
     in.open(filePath, ios::in | ios::binary);
 
-    if (in.is_open()) {
+    if (in.is_open()) 
+    {
+        isLoaded = true;
         char* buffer = new char[MAX_BUFF];
         int size;
         in.read(buffer, sizeof(size));
@@ -505,6 +737,17 @@ void loadFromBinaryFile(string filePath) {
             rect = reinterpret_cast<RECT*>(item_buff);
             shape->setDimens(rect);
 
+            int style;
+            in.read(item_buff, sizeof(style));
+            style = item_buff[0];
+
+            int size;
+            in.read(item_buff, sizeof(style));
+            size = item_buff[0];
+
+            shape->setStyle(style);
+            shape->setSize(size);
+
             objects.push_back(shape);
 
             delete[] item_buff;
@@ -513,8 +756,9 @@ void loadFromBinaryFile(string filePath) {
 
         delete[] buffer;
     }
-    else {
-
+    else
+    {
+        isLoaded = false;
         OutputDebugString(L"Can't open data.bin to read");
     }
 
@@ -544,6 +788,7 @@ void openFileDialog(HWND hwnd)
         wstring ws(szFilePath);
         // your new String
         string fileName(ws.begin(), ws.end());
+        currentFile = fileName;
         loadFromBinaryFile(fileName);
         InvalidateRect(hwnd, NULL, TRUE);
     }
@@ -556,7 +801,7 @@ void saveFileDialog(HWND hwnd)
 
     ZeroMemory(&ofn, sizeof(ofn));
 
-    ofn.lStructSize = sizeof(ofn); // SEE NOTE BELOW
+    ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = hwnd;
     ofn.lpstrFilter = L"Binary Files (*.bin)\0*.bin\0All Files (*.*)\0*.*\0";
     ofn.lpstrFile = szFileName;
@@ -566,12 +811,63 @@ void saveFileDialog(HWND hwnd)
 
     if (GetSaveFileName(&ofn))
     {
-        // Do something usefull with the filename stored in szFileName 
+        // Create wstring with the file's path
         wstring ws(szFileName);
         // your new String
         string fileName(ws.begin(), ws.end());
-
-        //defaultFilePath = fileName;
+        /*if (isLoaded || isSaved || isNewed)
+        {
+            saveToBinaryFile(currentFile);
+        }
+        else
+        {
+            currentFile = fileName;
+            saveToBinaryFile(fileName);
+        }*/
+        currentFile = fileName;
         saveToBinaryFile(fileName);
+    }
+}
+
+void newFileDialog(HWND hwnd)
+{
+    if (objects.size() != 0)
+    {
+        int result = MessageBox(hwnd, L"Do you want to save?", L"My Paint", MB_OKCANCEL | MB_ICONQUESTION);
+        if (result == IDOK)
+        {
+            isNewed = true;
+            saveFileDialog(hwnd);
+            objects.clear();
+            saveFileDialog(hwnd);
+            InvalidateRect(hwnd, NULL, FALSE);
+            BeginPaint(hwnd, &ps);
+            EndPaint(hwnd, &ps);
+        }
+        if (result == IDCANCEL)
+        {
+            isNewed = true;
+            objects.clear();
+            saveFileDialog(hwnd);
+            InvalidateRect(hwnd, NULL, FALSE);
+            BeginPaint(hwnd, &ps);
+            EndPaint(hwnd, &ps);
+        }
+    }
+    else
+    {
+        isNewed = true;
+        saveFileDialog(hwnd);
+    }
+}
+
+void updateScreen(HDC hdcMem)
+{
+    for (int i = 0; i < objects.size(); i++)
+    {
+        HPEN hNewPen = CreatePen(objects[i]->getStyle(), objects[i]->getSize(), objects[i]->getcolor());
+        SelectObject(hdcMem, hNewPen);
+        objects[i]->draw(hdcMem);
+        DeleteObject(hNewPen);
     }
 }

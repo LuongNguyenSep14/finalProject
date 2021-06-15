@@ -12,7 +12,6 @@ private:
 		_prototype.push_back(make_shared<Rect>());
 		_prototype.push_back(make_shared<Ellipses>());
 		_prototype.push_back(make_shared<Line>());
-		//_prototype.push_back(make_shared<Texts>());
 	}
 
 
