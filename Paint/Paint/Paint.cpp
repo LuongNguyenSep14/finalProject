@@ -344,18 +344,13 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         saveFileDialog(hwnd);
         break;
     case ID_REDO:
-        /*if (objects.size() > 0)
-        {
-            shared_ptr<Object> temp = objects.back();
-            objects.pop_back();
-            objBuffer.push_back(temp);
-        }*/
         if (objBuffer.size() > 0)
         {
             shared_ptr<Object> temp = objBuffer.back();
             objBuffer.pop_back();
             objects.push_back(temp);
         }
+
         InvalidateRect(hwnd, &rc, FALSE);
         
         break;
@@ -374,9 +369,11 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             objects.pop_back();
             objBuffer.push_back(temp);
         }
+
         InvalidateRect(hwnd, &rc, FALSE);
-   
+
         break;
+
     case ID_DRAW_ELLIPSE:
         selected = false;
         selectButton = false;
@@ -709,11 +706,15 @@ void saveToBinaryFile(string filePath)
             RECT* rect = shape->getDimens();
             int style = shape->getStyle();
             int size = shape->getSize();
+            bool isFilled = shape->getFilled();
+            COLORREF filledColor = shape->getFilledColor();
             out.write(reinterpret_cast<const char*>(&id), sizeof(id));
             out.write(reinterpret_cast<const char*>(&color), sizeof(COLORREF));
             out.write(reinterpret_cast<const char*>(rect), sizeof(RECT));
             out.write(reinterpret_cast<const char*>(&style), sizeof(style));
             out.write(reinterpret_cast<const char*>(&size), sizeof(size));
+            out.write(reinterpret_cast<const char*>(&isFilled), sizeof(isFilled));
+            out.write(reinterpret_cast<const char*>(&filledColor), sizeof(filledColor));
         }
     }
     else 
@@ -777,8 +778,25 @@ void loadFromBinaryFile(string filePath) {
             in.read(item_buff, sizeof(style));
             size = item_buff[0];
 
+            bool isFilled;
+            in.read(item_buff, sizeof(isFilled));
+            isFilled = item_buff[0];
+
+            COLORREF filledColor;
+            in.read(item_buff, sizeof(COLORREF));
+            filledColor = item_buff[0];
+            r = GetRValue(filledColor);
+            filledColor = item_buff[1];
+            g = GetGValue(filledColor);
+            filledColor = item_buff[2];
+            b = GetBValue(filledColor);
+
+            filledColor = RGB(r, g, b);
+
             shape->setStyle(style);
             shape->setSize(size);
+            shape->setFilledColor(filledColor);
+            shape->setFilled(isFilled);
 
             objects.push_back(shape);
 

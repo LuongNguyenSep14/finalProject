@@ -270,7 +270,7 @@ public:
 			DeleteObject(brush);
 
 
-			HPEN hNewPen = CreatePen(this->getStyle(), this->getSize(), RGB(0,0,0));
+			HPEN hNewPen = CreatePen(this->getStyle(), this->getSize(), this->getcolor());
 			SelectObject(hdc, hNewPen);
 			SelectObject(hdc, GetStockObject(NULL_BRUSH));
 			Rectangle(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
@@ -355,7 +355,7 @@ public:
 			DeleteObject(hbr);
 
 
-			HPEN hNewPen = CreatePen(this->getStyle(), this->getSize(), RGB(0, 0, 0));
+			HPEN hNewPen = CreatePen(this->getStyle(), this->getSize(), this->getcolor());
 			SelectObject(hdc, hNewPen);
 			SelectObject(hdc, GetStockObject(NULL_BRUSH));
 			Ellipse(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
