@@ -170,8 +170,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 case ID_DRAW_ELLIPSE:
                     lpttt->lpszText = (LPWSTR)L"Draw Ellipse";
                     break;
-                case ID_DRAW_TEXT:
-                    lpttt->lpszText = (LPWSTR)L"Draw Text";
+                case ID_FILL:
+                    lpttt->lpszText = (LPWSTR)L"Fill color";
                     break;
                 case ID_SELECT:
                     lpttt->lpszText = (LPWSTR)L"Select";
@@ -279,12 +279,12 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
         { 0, ID_DRAW_ELLIPSE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 1, ID_DRAW_RECTANGLE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 2, ID_DRAW_LINE,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
-        { 3, ID_DRAW_TEXT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
+        { 3, ID_FILL,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 4, ID_SELECT,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 5, ID_REDO,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 6, ID_UNDO,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
     };
-    TBADDBITMAP	tbBitmap = { hInst, IDB_BITMAP2 };
+    TBADDBITMAP	tbBitmap = { hInst, IDB_BITMAP5 };
     
     int idx = SendMessage(hToolBarWnd, TB_ADDBITMAP, (WPARAM)sizeof(tbBitmap) / sizeof(TBADDBITMAP),
         (LPARAM)(LPTBADDBITMAP)&tbBitmap);
@@ -334,21 +334,21 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         }
         break;
 
-    case ID_CHOOSE_FONT:
-        ZeroMemory(&cf, sizeof(CHOOSEFONT));
-        cf.lStructSize = sizeof(CHOOSEFONT);
-        cf.hwndOwner = hwnd;
-        cf.lpLogFont = &lf;
-        cf.Flags = CF_SCREENFONTS | CF_EFFECTS;
+    //case ID_CHOOSE_FONT:
+    //    ZeroMemory(&cf, sizeof(CHOOSEFONT));
+    //    cf.lStructSize = sizeof(CHOOSEFONT);
+    //    cf.hwndOwner = hwnd;
+    //    cf.lpLogFont = &lf;
+    //    cf.Flags = CF_SCREENFONTS | CF_EFFECTS;
 
-        if (ChooseFont(&cf) == TRUE)
-        {
-            hfont = CreateFontIndirect(cf.lpLogFont);
-            hfontPrev = SelectObject(hdc, hfont);
-            rgbCurrent = cf.rgbColors;
-            rgbPrev = SetTextColor(hdc, rgbCurrent);
-        }
-        break;
+    //    if (ChooseFont(&cf) == TRUE)
+    //    {
+    //        hfont = CreateFontIndirect(cf.lpLogFont);
+    //        hfontPrev = SelectObject(hdc, hfont);
+    //        rgbCurrent = cf.rgbColors;
+    //        rgbPrev = SetTextColor(hdc, rgbCurrent);
+    //    }
+    //    break;
     case ID_FILE_OPEN:
         openFileDialog(hwnd);
         break;
@@ -625,7 +625,6 @@ void OnPaint(HWND hwnd)
     HDC hdcMem;
     HBITMAP hbmMem, hbmOld;
     HPEN hPen;
-    //HFONT hfntOld;
 
     HDC hdc = BeginPaint(hwnd, &ps);
     // Create a compatible DC.
@@ -636,8 +635,6 @@ void OnPaint(HWND hwnd)
     hbmOld = (HBITMAP)SelectObject(hdcMem, hbmMem);
     // Erase the background.
     FillRect(hdcMem, &rc, HBRUSH(RGB(255, 255, 255)));
-    
-    //if (hfnt) {hfntOld = SelectObject(hdcMem, hfnt);};
 
     // Render the image into the offscreen DC.
     //SetBkMode(hdcMem, TRANSPARENT);

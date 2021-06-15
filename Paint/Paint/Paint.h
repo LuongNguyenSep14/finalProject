@@ -25,12 +25,12 @@ COLORREF  acrCustClr[16]; // Mảng custom color
 DWORD  rgbCurrent = RGB(255, 0, 0); // Red
 HBRUSH  hbrush; // Tạo ra brush từ màu đã chọn
 
-CHOOSEFONT  cf;
-LOGFONT  lf;
-HFONT  hfNew, hfOld, hfont;
-HGDIOBJ hfontPrev;
-COLORREF rgbPrev;
-HDC hdc;
+//CHOOSEFONT  cf;
+//LOGFONT  lf;
+//HFONT  hfNew, hfOld, hfont;
+//HGDIOBJ hfontPrev;
+//COLORREF rgbPrev;
+//HDC hdc;
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance

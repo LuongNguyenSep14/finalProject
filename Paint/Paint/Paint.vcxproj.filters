@@ -51,16 +51,7 @@
     <Image Include="Picture.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="rec\shape.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="paint.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="rec\shape2.bmp">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="rec\shape4.bmp">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="rec\shape3.bmp">
