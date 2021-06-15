@@ -249,12 +249,22 @@ public:
 			Rectangle(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
 		else
 		{
+			
 			RECT rect = { getFrom().x, getFrom().y, getTo().x, getTo().y };
 			HBRUSH brush = CreateSolidBrush(this->getcolor());
 
 			FillRect(hdc, &rect, brush);
 
 			DeleteObject(brush);
+
+
+			HPEN hNewPen = CreatePen(this->getStyle(), this->getSize(), RGB(0,0,0));
+			SelectObject(hdc, hNewPen);
+			SelectObject(hdc, GetStockObject(NULL_BRUSH));
+			Rectangle(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
+			DeleteObject(hNewPen);
+
+			
 		}
 	}
 
@@ -331,6 +341,14 @@ public:
 			SelectObject(hdc, hOld);
 			/*free brush resources back to system*/
 			DeleteObject(hbr);
+
+
+			HPEN hNewPen = CreatePen(this->getStyle(), this->getSize(), RGB(0, 0, 0));
+			SelectObject(hdc, hNewPen);
+			SelectObject(hdc, GetStockObject(NULL_BRUSH));
+			Ellipse(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
+			DeleteObject(hNewPen);
+
 		}
 	}
 
