@@ -285,7 +285,7 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
         { 5, ID_REDO,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 },
         { 6, ID_UNDO,	TBSTATE_ENABLED, TBSTYLE_BUTTON, 0, 0 }
     };
-    TBADDBITMAP	tbBitmap = { hInst, IDB_BITMAP5 };
+    TBADDBITMAP	tbBitmap = { hInst, IDB_BITMAP2 };
     
     int idx = SendMessage(hToolBarWnd, TB_ADDBITMAP, (WPARAM)sizeof(tbBitmap) / sizeof(TBADDBITMAP),
         (LPARAM)(LPTBADDBITMAP)&tbBitmap);

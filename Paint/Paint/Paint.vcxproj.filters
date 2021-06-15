@@ -54,7 +54,7 @@
     <Image Include="paint.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="rec\shape3.bmp">
+    <Image Include="rec\shape2.bmp">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

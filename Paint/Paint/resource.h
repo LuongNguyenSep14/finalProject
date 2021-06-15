@@ -27,12 +27,10 @@
 #define ID_REDO                         125
 #define ID_FILL                         126
 #define IDR_MAINFRAME                   128
-#define IDB_BITMAP1                     129
 #define IDI_ICON2                       131
 #define IDB_BITMAP2                     132
 #define IDB_BITMAP3                     133
 #define IDB_BITMAP4                     134
-#define IDB_BITMAP5                     135
 #define ID_CHOOSE_COLOR                 32771
 #define ID_CHOOSE_FONT                  32772
 #define ID_WIDTH_1                      32773
@@ -49,7 +47,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        136
+#define _APS_NEXT_RESOURCE_VALUE        137
 #define _APS_NEXT_COMMAND_VALUE         32785
 #define _APS_NEXT_CONTROL_VALUE         1000
 #define _APS_NEXT_SYMED_VALUE           127
