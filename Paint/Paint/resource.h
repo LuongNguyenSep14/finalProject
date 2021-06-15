@@ -33,6 +33,13 @@
 #define IDB_BITMAP4                     134
 #define ID_CHOOSE_COLOR                 32771
 #define ID_CHOOSE_FONT                  32772
+#define ID_WIDTH_1                      32773
+#define ID_WIDTH_2                      32774
+#define ID_WIDTH_3                      32775
+#define ID_WIDTH_4                      32776
+#define ID_WIDTH_5                      32777
+#define ID_FILLSHAPE_FALSE              32778
+#define ID_FILLSHAPE_TRUE               32779
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -41,7 +48,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        135
-#define _APS_NEXT_COMMAND_VALUE         32773
+#define _APS_NEXT_COMMAND_VALUE         32780
 #define _APS_NEXT_CONTROL_VALUE         1000
 #define _APS_NEXT_SYMED_VALUE           126
 #endif

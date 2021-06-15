@@ -42,6 +42,7 @@ protected:
 	DWORD color;
 	int size; //line width = độ dày nét vẽ
 	bool isDeleted;
+	bool isFilled;
 
 public:
 	Object()
@@ -51,6 +52,17 @@ public:
 		style = 0;
 		size = 1;
 		isDeleted = false;
+		isFilled = false;
+	}
+
+	void setFilled(bool fill)
+	{
+		isFilled = fill;
+	}
+
+	bool getFilled()
+	{
+		return isFilled;
 	}
 
 	Point getFrom()
@@ -233,7 +245,17 @@ public:
 
 	virtual void draw(HDC& hdc)
 	{
-		Rectangle(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
+		if (!isFilled)
+			Rectangle(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
+		else
+		{
+			RECT rect = { getFrom().x, getFrom().y, getTo().x, getTo().y };
+			HBRUSH brush = CreateSolidBrush(this->getcolor());
+
+			FillRect(hdc, &rect, brush);
+
+			DeleteObject(brush);
+		}
 	}
 
 	virtual shared_ptr<Object> nextObject()
@@ -293,7 +315,23 @@ public:
 
 	virtual void draw(HDC& hdc)
 	{
-		Ellipse(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
+		if (!isFilled)
+			Ellipse(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
+		else
+		{
+			/*create and select gdi brush*/
+
+
+			HBRUSH hbr = CreateSolidBrush(this->getcolor());
+			HBRUSH hOld = (HBRUSH)SelectObject(hdc, hbr);
+			/*draw ellipse*/
+
+			Ellipse(hdc, getFrom().x, getFrom().y, getTo().x, getTo().y);
+			/*restore device context's original, default brush object*/
+			SelectObject(hdc, hOld);
+			/*free brush resources back to system*/
+			DeleteObject(hbr);
+		}
 	}
 
 	virtual shared_ptr<Object> nextObject()

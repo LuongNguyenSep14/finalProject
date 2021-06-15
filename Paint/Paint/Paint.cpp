@@ -30,6 +30,7 @@ bool isDeleted;
 
 bool copyButton = false;
 
+
 shared_ptr<Object> cloneObjPtr = NULL;
 shared_ptr<Object> obj;
 vector<shared_ptr<Object>> objects;
@@ -42,6 +43,9 @@ POINT p;
 RECT rc;
 
 int id_button = ID_DRAW_RECTANGLE;
+
+bool filledShape = false;
+int width = 1;
 
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -465,6 +469,27 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             InvalidateRect(hwnd, &rc, FALSE);
         }
         break;
+    case ID_FILLSHAPE_FALSE:
+        filledShape = false;
+        break;
+    case ID_FILLSHAPE_TRUE:
+        filledShape = true;
+        break;
+    case ID_WIDTH_1:
+        width = 1;
+        break;
+    case ID_WIDTH_2:
+        width = 2;
+        break;
+    case ID_WIDTH_3:
+        width = 3;
+        break;
+    case ID_WIDTH_4:
+        width = 4;
+        break;
+    case ID_WIDTH_5:
+        width = 5;
+        break;
     } 
 }
 
@@ -629,8 +654,9 @@ void OnPaint(HWND hwnd)
     obj->setColor(rgbCurrent);
     obj->setFrom(Point(fromX, fromY));
     obj->setTo(Point(toX, toY));
-    obj->setSize(1); //line width
+    obj->setSize(width*2); //line width
     obj->setStyle(0); //solid = 0;
+    obj->setFilled(filledShape);
 
     /*for (int i = 0; i < objects.size(); i++)
     {
