@@ -462,10 +462,14 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         filledShape = true;
         break;
     case ID_FILL:
-        if (filledShape)
-            filledShape = false;
-        else
-            filledShape = true;
+        if (selected)
+        {
+            selectedPtr->setFilled(true);
+            selectedPtr->setFilledColor(rgbCurrent);
+            selected = false;
+            selectButton = false;
+            InvalidateRect(hwnd, &rc, FALSE);
+        }
         break;
     case ID_WIDTH_1:
         width = 1;
@@ -648,6 +652,7 @@ void OnPaint(HWND hwnd)
     }
 
     obj->setColor(rgbCurrent);
+    obj->setFilledColor(rgbCurrent);
     obj->setFrom(Point(fromX, fromY));
     obj->setTo(Point(toX, toY));
     obj->setSize(width); //line width

@@ -43,6 +43,7 @@ protected:
 	int size; //line width = độ dày nét vẽ
 	bool isDeleted;
 	bool isFilled;
+	DWORD filledColor;
 
 public:
 	Object()
@@ -53,6 +54,7 @@ public:
 		size = 1;
 		isDeleted = false;
 		isFilled = false;
+		filledColor = RGB(0, 0, 0);
 	}
 
 	void setFilled(bool fill)
@@ -98,6 +100,16 @@ public:
 	void setColor(DWORD color)
 	{
 		this->color = color;
+	}
+
+	void setFilledColor(DWORD color)
+	{
+		this->filledColor = color;
+	}
+
+	DWORD getFilledColor()
+	{
+		return this->filledColor;
 	}
 
 	void setSize(int size)
@@ -251,7 +263,7 @@ public:
 		{
 			
 			RECT rect = { getFrom().x, getFrom().y, getTo().x, getTo().y };
-			HBRUSH brush = CreateSolidBrush(this->getcolor());
+			HBRUSH brush = CreateSolidBrush(this->getFilledColor());
 
 			FillRect(hdc, &rect, brush);
 
@@ -332,7 +344,7 @@ public:
 			/*create and select gdi brush*/
 
 
-			HBRUSH hbr = CreateSolidBrush(this->getcolor());
+			HBRUSH hbr = CreateSolidBrush(this->getFilledColor());
 			HBRUSH hOld = (HBRUSH)SelectObject(hdc, hbr);
 			/*draw ellipse*/
 
