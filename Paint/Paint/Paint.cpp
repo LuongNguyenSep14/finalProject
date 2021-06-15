@@ -354,18 +354,13 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     case ID_FILE_SAVE:
         saveFileDialog(hwnd);
         break;
-    case ID_UNDO:
-        if (objects.size() > 0)
+    case ID_REDO:
+        /*if (objects.size() > 0)
         {
             shared_ptr<Object> temp = objects.back();
             objects.pop_back();
             objBuffer.push_back(temp);
-        }
-        InvalidateRect(hwnd, &rc, FALSE);
-        
-        break;
-        
-    case ID_REDO:
+        }*/
         if (objBuffer.size() > 0)
         {
             shared_ptr<Object> temp = objBuffer.back();
@@ -373,7 +368,25 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             objects.push_back(temp);
         }
         InvalidateRect(hwnd, &rc, FALSE);
-        //OnPaint(hwnd);
+        
+        break;
+        
+    case ID_UNDO:
+        if (objBuffer.size() > 0 && objBuffer.back()->getStatus() == true)
+        {
+            shared_ptr<Object> temp = objBuffer.back();
+            objBuffer.pop_back();
+            temp->setStatus(false);
+            objects.push_back(temp);
+        }
+        else if (objects.size() > 0 && !objects.back()->getStatus())
+        {
+            shared_ptr<Object> temp = objects.back();
+            objects.pop_back();
+            objBuffer.push_back(temp);
+        }
+        InvalidateRect(hwnd, &rc, FALSE);
+   
         break;
     case ID_DRAW_ELLIPSE:
         selected = false;
@@ -489,6 +502,7 @@ void Delete()
 {
     if (indexCutObj != -1 && objects.size() > 0)
     {
+        objects[indexCutObj]->setStatus(true);
         objBuffer.push_back(objects[indexCutObj]);
         objects.erase(objects.begin() + indexCutObj);
     }

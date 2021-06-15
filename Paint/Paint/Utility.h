@@ -41,6 +41,7 @@ protected:
 	Point from, to;
 	DWORD color;
 	int size; //line width = độ dày nét vẽ
+	bool isDeleted;
 
 public:
 	Object()
@@ -49,6 +50,7 @@ public:
 		color = RGB(0, 0, 0);
 		style = 0;
 		size = 1;
+		isDeleted = false;
 	}
 
 	Point getFrom()
@@ -149,6 +151,16 @@ public:
 
 		oriFx = fx + dfx;
 		oriFy = fy + dfy;
+	}
+
+	virtual bool getStatus()
+	{
+		return isDeleted;
+	}
+
+	virtual void setStatus(bool status)
+	{
+		isDeleted = status;
 	}
 };
 
