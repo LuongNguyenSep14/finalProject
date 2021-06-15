@@ -22,6 +22,7 @@ int olddy;
 int indexCutObj = -1;
 DWORD oldColor;
 int oldStyle;
+int oldWidth;
 string currentFile = "";
 bool isNewed;
 bool isSaved;
@@ -333,22 +334,6 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             rgbCurrent = cc.rgbResult;
         }
         break;
-
-    //case ID_CHOOSE_FONT:
-    //    ZeroMemory(&cf, sizeof(CHOOSEFONT));
-    //    cf.lStructSize = sizeof(CHOOSEFONT);
-    //    cf.hwndOwner = hwnd;
-    //    cf.lpLogFont = &lf;
-    //    cf.Flags = CF_SCREENFONTS | CF_EFFECTS;
-
-    //    if (ChooseFont(&cf) == TRUE)
-    //    {
-    //        hfont = CreateFontIndirect(cf.lpLogFont);
-    //        hfontPrev = SelectObject(hdc, hfont);
-    //        rgbCurrent = cf.rgbColors;
-    //        rgbPrev = SetTextColor(hdc, rgbCurrent);
-    //    }
-    //    break;
     case ID_FILE_OPEN:
         openFileDialog(hwnd);
         break;
@@ -446,6 +431,7 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             cloneObjPtr->setTo(Point(width + 5, height + 30));
             cloneObjPtr->setColor(oldColor);
             cloneObjPtr->setStyle(oldStyle);
+            cloneObjPtr->setSize(oldWidth);
 
             objects.push_back(cloneObjPtr->Clone());
             SendMessage(GetDlgItem(hwnd, IDC_STATUSBAR), SB_SETTEXT, 2, (LPARAM)L"");
@@ -474,6 +460,12 @@ void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         break;
     case ID_FILLSHAPE_TRUE:
         filledShape = true;
+        break;
+    case ID_FILL:
+        if (filledShape)
+            filledShape = false;
+        else
+            filledShape = true;
         break;
     case ID_WIDTH_1:
         width = 1;
@@ -552,17 +544,23 @@ void OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT keyFlags)
         for (int i = 0; i < objects.size(); i++)
             if (objects[i]->checkCollision(mouseX, mouseY))
             {
+                //int _width = objects[i]->getSize();
+
                 selectedPtr = (objects[i]).get();
                 indexCutObj = i;
                 if (selectedPtr != NULL)
                 {
                     oldColor = selectedPtr->getcolor();
                     oldStyle = selectedPtr->getStyle();
+                    oldWidth = selectedPtr->getSize();
 
-                    selectedPtr->setColor(RGB(0, 0, 0));
+                    if (!selectedPtr->getFilled())
+                        selectedPtr->setColor(RGB(0, 0, 0));
                     selectedPtr->setStyle(1);
+                    selectedPtr->setSize(1);
 
                     selected = true;
+                    
                 }  
                 break;
             }
@@ -645,15 +643,17 @@ void OnPaint(HWND hwnd)
     {
         selectedPtr->setColor(oldColor);
         selectedPtr->setStyle(oldStyle);
+        selectedPtr->setSize(oldWidth);
         selectedPtr = NULL;
     }
 
     obj->setColor(rgbCurrent);
     obj->setFrom(Point(fromX, fromY));
     obj->setTo(Point(toX, toY));
-    obj->setSize(width*2); //line width
+    obj->setSize(width); //line width
     obj->setStyle(0); //solid = 0;
     obj->setFilled(filledShape);
+
 
     /*for (int i = 0; i < objects.size(); i++)
     {
@@ -678,6 +678,10 @@ void OnPaint(HWND hwnd)
     DeleteDC(hdcMem);
     DeleteObject(hPen);
     ReleaseDC(hwnd, hdc);
+
+    //reset properties for new obj
+    //width = 1;
+    //filledShape = false;
 
     EndPaint(hwnd, &ps);
 }
