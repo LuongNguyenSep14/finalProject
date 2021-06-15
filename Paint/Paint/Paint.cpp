@@ -867,6 +867,7 @@ void updateScreen(HDC hdcMem)
     {
         HPEN hNewPen = CreatePen(objects[i]->getStyle(), objects[i]->getSize(), objects[i]->getcolor());
         SelectObject(hdcMem, hNewPen);
+        SelectObject(hdcMem, GetStockObject(NULL_BRUSH));
         objects[i]->draw(hdcMem);
         DeleteObject(hNewPen);
     }
